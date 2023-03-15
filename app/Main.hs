@@ -1,8 +1,7 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import qualified Scum (someFunc)
+import Scum (Expr(..))
 
 main :: IO ()
-main = do
-  putStrLn "Hello, Haskell!"
-  Scum.someFunc
+main = print $ List [Atom "a", Atom "b", Atom "c"]
