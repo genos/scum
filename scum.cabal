@@ -9,11 +9,18 @@ version:        0.1.0.0
 synopsis:       Write me a Scheme-ish
 description:    See README at <https://github.com/genos/scum#readme>
 category:       Math
+homepage:       https://github.com/genos/scum#readme
+bug-reports:    https://github.com/genos/scum/issues
 maintainer:     Graham Enos <graham.enos@gmail.com>
 license:        MIT
+license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
+
+source-repository head
+  type: git
+  location: https://github.com/genos/scum
 
 library
   exposed-modules:

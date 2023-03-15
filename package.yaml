@@ -2,6 +2,7 @@ name: scum
 version: 0.1.0.0
 license: MIT
 maintainer: Graham Enos <graham.enos@gmail.com>
+github: genos/scum
 synopsis: Write me a Scheme-ish
 description: See README at <https://github.com/genos/scum#readme>
 category: Math
