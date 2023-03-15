@@ -10,22 +10,23 @@ extra-source-files:
   - README.md
 
 ghc-options: -Wall -Wextra
-dependencies:
-  - base ^>=4.17.0.0
-  - attoparsec ^>= 0.14.4
-  - containers ^>= 0.6.7
-  - text ^>= 2.0.2
-  - transformers ^>= 0.6.1.0
-  - vector ^>= 0.13.0.0
 
 library:
   source-dirs: src
   exposed-modules: Scum
+  dependencies:
+    - base ^>=4.17.0.0
+    - attoparsec ^>= 0.14.4
+    - containers ^>= 0.6.7
+    - text ^>= 2.0.2
+    - transformers ^>= 0.6.1.0
+    - vector ^>= 0.13.0.0
 
 executable:
   main: Main.hs
   source-dirs: app
   dependencies:
+    - base ^>=4.17.0.0
     - scum
     - optparse-applicative ^>= 0.17.0.0
 
@@ -34,5 +35,6 @@ tests:
     main: Main.hs
     source-dirs: test
     dependencies:
+      - base ^>=4.17.0.0
       - scum
       - hedgehog ^>= 1.2

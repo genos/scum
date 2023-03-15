@@ -48,14 +48,9 @@ executable scum
       app
   ghc-options: -Wall -Wextra
   build-depends:
-      attoparsec >=0.14.4 && <0.15
-    , base >=4.17.0.0 && <4.18
-    , containers >=0.6.7 && <0.7
+      base >=4.17.0.0 && <4.18
     , optparse-applicative >=0.17.0.0 && <0.18
     , scum
-    , text >=2.0.2 && <2.1
-    , transformers >=0.6.1.0 && <0.7
-    , vector >=0.13.0.0 && <0.14
   default-language: Haskell2010
 
 test-suite scum-test
@@ -67,12 +62,7 @@ test-suite scum-test
       test
   ghc-options: -Wall -Wextra
   build-depends:
-      attoparsec >=0.14.4 && <0.15
-    , base >=4.17.0.0 && <4.18
-    , containers >=0.6.7 && <0.7
+      base >=4.17.0.0 && <4.18
     , hedgehog ==1.2.*
     , scum
-    , text >=2.0.2 && <2.1
-    , transformers >=0.6.1.0 && <0.7
-    , vector >=0.13.0.0 && <0.14
   default-language: Haskell2010
