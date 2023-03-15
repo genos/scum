@@ -1,3 +1,3 @@
-module Scum (someFunc) where
+module Scum (Expr(..), Identifier(..)) where
 
-import Scum.Extra (someFunc)
+import Scum.Expression (Expr(..), Identifier(..))

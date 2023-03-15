@@ -20,7 +20,6 @@ library:
     - containers ^>= 0.6.7
     - text ^>= 2.0.2
     - transformers ^>= 0.6.1.0
-    - vector ^>= 0.13.0.0
 
 executable:
   main: Main.hs
