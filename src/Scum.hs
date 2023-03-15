@@ -1,4 +1,3 @@
 module Scum (someFunc) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import Scum.Extra (someFunc)

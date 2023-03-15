@@ -1,0 +1,37 @@
+name: scum
+version: 0.1.0.0
+license: MIT
+maintainer: Graham Enos <graham.enos@gmail.com>
+synopsis: Write me a Scheme-ish
+description: See README at <https://github.com/genos/scum#readme>
+category: Math
+extra-source-files:
+  - README.md
+
+ghc-options: -Wall -Wextra
+dependencies:
+  - base ^>=4.17.0.0
+  - attoparsec ^>= 0.14.4
+  - containers ^>= 0.6.7
+  - text ^>= 2.0.2
+  - transformers ^>= 0.6.1.0
+  - vector ^>= 0.13.0.0
+
+library:
+  source-dirs: src
+  exposed-modules: Scum
+
+executable:
+  main: Main.hs
+  source-dirs: app
+  dependencies:
+    - scum
+    - optparse-applicative ^>= 0.17.0.0
+
+tests:
+  scum-test:
+    main: Main.hs
+    source-dirs: test
+    dependencies:
+      - scum
+      - hedgehog ^>= 1.2
