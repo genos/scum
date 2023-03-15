@@ -16,8 +16,8 @@ library:
   exposed-modules: Scum
   dependencies:
     - base ^>=4.17.0.0
-    - attoparsec ^>= 0.14.4
     - containers ^>= 0.6.7
+    - megaparsec ^>= 9.3.0
     - text ^>= 2.0.2
     - transformers ^>= 0.6.1.0
 
