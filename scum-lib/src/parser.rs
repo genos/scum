@@ -1,4 +1,3 @@
-use crate::error::ScumResult;
 use crate::expression::{Atom, Expression, Identifier};
 use pest::Parser;
 use pest_derive::Parser;
@@ -7,7 +6,31 @@ use pest_derive::Parser;
 #[grammar = "grammar.pest"]
 struct ScumParser;
 
-pub(crate) fn parse(input: &str) -> ScumResult<Expression> {
+#[derive(Debug, thiserror::Error)]
+pub enum ParsingError {
+    #[error("Unable to parse float: {0:#?}")]
+    ParsingFloat(#[from] std::num::ParseFloatError),
+    #[error("Unable to parse int: {0:#?}")]
+    ParsingInt(#[from] std::num::ParseIntError),
+    #[error("Parsing error: {location:?}, {line_col:?} {line}")]
+    GeneralParsing {
+        location: pest::error::InputLocation,
+        line_col: pest::error::LineColLocation,
+        line: String,
+    },
+}
+
+impl From<pest::error::Error<Rule>> for ParsingError {
+    fn from(e: pest::error::Error<Rule>) -> Self {
+        Self::GeneralParsing {
+            location: e.clone().location,
+            line_col: e.clone().line_col,
+            line: e.line().to_string(),
+        }
+    }
+}
+
+pub fn parse_impl(input: &str) -> Result<Expression, ParsingError> {
     let mut xs = vec![];
     let pairs = ScumParser::parse(Rule::expression, input)?;
     for x in pairs {
@@ -35,7 +58,7 @@ pub(crate) fn parse(input: &str) -> ScumResult<Expression> {
             Rule::list => {
                 let mut ys = vec![];
                 for y in x.into_inner() {
-                    ys.push(parse(y.as_str())?);
+                    ys.push(parse_impl(y.as_str())?);
                 }
                 xs.push(Expression::List(ys));
             }
@@ -103,7 +126,7 @@ mod test {
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
             let s = exp.clone().to_string();
-            let p = parse(&s);
+            let p = parse_impl(&s);
             dbg!(&p);
             prop_assert!(p.is_ok());
             let exp2 = p.unwrap();
