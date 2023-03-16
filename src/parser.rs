@@ -4,7 +4,7 @@ use nom::{
     bytes::complete::tag,
     character::complete::{anychar, char, digit1, multispace0, multispace1},
     combinator::{cut, fail, map, map_res, value, verify},
-    error::{context, VerboseError},
+    error::VerboseError,
     multi::{many0, separated_list0},
     number::complete::double,
     sequence::{delimited, pair, preceded, terminated},
@@ -90,6 +90,10 @@ fn _paren<'a, T>(
     )
 }
 
+fn _constant(input: &str) -> ParseResult<Expression> {
+    map(_atom, Expression::Constant)(input)
+}
+
 fn _list(input: &str) -> ParseResult<Expression> {
     _paren(map(
         separated_list0(multispace1, _expression),
@@ -98,7 +102,7 @@ fn _list(input: &str) -> ParseResult<Expression> {
 }
 
 fn _expression(input: &str) -> ParseResult<Expression> {
-    alt((map(_atom, Expression::Constant), _list))(input)
+    alt((_constant, _list))(input)
 }
 
 #[cfg(test)]
@@ -166,7 +170,6 @@ mod test {
         #[test]
         fn atom_round_trip(a in arb_atom()) {
             let s = a.clone().to_string();
-            dbg!(&s);
             let p = _atom(&s);
             prop_assert!(p.is_ok());
             let (rest, a2) = p.unwrap();
@@ -177,11 +180,8 @@ mod test {
 
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
-            // dbg!(&exp);
             let s = exp.clone().to_string();
             let p = _expression(&s);
-            dbg!(&s);
-            dbg!(&p);
             prop_assert!(p.is_ok());
             let (rest, exp2) = p.unwrap();
             prop_assert_eq!(rest, "");
