@@ -38,7 +38,7 @@ fn _paren<T: fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
     let mut sep = "";
     write!(f, "(")?;
     for x in xs {
-        write!(f, "{}{}", x, sep)?;
+        write!(f, "{}{}", sep, x)?;
         sep = " ";
     }
     write!(f, ")")
