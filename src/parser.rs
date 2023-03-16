@@ -1,12 +1,13 @@
+use crate::error::ScumResult;
 use crate::expression::{Atom, Expression, Identifier};
-use pest::{error::Error, Parser};
+use pest::Parser;
 use pest_derive::Parser;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 struct ScumParser;
 
-fn _expression(input: &str) -> Result<Expression, Error<Rule>> {
+pub(crate) fn parse(input: &str) -> ScumResult<Expression> {
     let mut xs = vec![];
     let pairs = ScumParser::parse(Rule::expression, input)?;
     for x in pairs {
@@ -15,11 +16,14 @@ fn _expression(input: &str) -> Result<Expression, Error<Rule>> {
                 for y in x.into_inner() {
                     match y.as_rule() {
                         Rule::bool => xs.push(Expression::Constant(Atom::Bool(y.as_str() == "#t"))),
-                        Rule::int => xs.push(Expression::Constant(Atom::Int(
-                            y.as_str().parse::<i64>().unwrap(),
-                        ))),
+                        Rule::int => {
+                            xs.push(Expression::Constant(Atom::Int(y.as_str().parse::<i64>()?)))
+                        }
                         Rule::float => xs.push(Expression::Constant(Atom::Float(
-                            y.as_str().parse::<f64>().unwrap(),
+                            y.as_str().parse::<f64>()?,
+                        ))),
+                        Rule::string => xs.push(Expression::Constant(Atom::Str(
+                            y.into_inner().next().unwrap().as_str().to_string(),
                         ))),
                         Rule::symbol => xs.push(Expression::Constant(Atom::Symbol(Identifier(
                             y.as_str().to_string(),
@@ -31,7 +35,7 @@ fn _expression(input: &str) -> Result<Expression, Error<Rule>> {
             Rule::list => {
                 let mut ys = vec![];
                 for y in x.into_inner() {
-                    ys.push(_expression(y.as_str())?);
+                    ys.push(parse(y.as_str())?);
                 }
                 xs.push(Expression::List(ys));
             }
@@ -51,7 +55,7 @@ mod test {
     use proptest::prelude::*;
 
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
-        "([+[-]*][^\\s0-9\\(\\)]*)|([a-zA-Z][^\\(\\)\\s]*)".prop_map(Identifier)
+        r"([+[-]*][^\s0-9\(\)]*)|([a-zA-Z][^\(\)\s]*)".prop_map(Identifier)
     }
 
     fn arb_atom() -> impl Strategy<Value = Atom> {
@@ -59,6 +63,7 @@ mod test {
             any::<bool>().prop_map(Atom::Bool),
             any::<f64>().prop_map(Atom::Float),
             any::<i64>().prop_map(Atom::Int),
+            r"[\w\s\d\u{7f}]*".prop_map(Atom::Str),
             arb_identifier().prop_map(Atom::Symbol),
         ]
     }
@@ -98,7 +103,8 @@ mod test {
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
             let s = exp.clone().to_string();
-            let p = _expression(&s);
+            let p = parse(&s);
+            dbg!(&p);
             prop_assert!(p.is_ok());
             let exp2 = p.unwrap();
             prop_assert_eq!(exp2, exp);

@@ -13,8 +13,15 @@ float = @{
     ~ ("." ~ ASCII_DIGIT*)?
     ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
 }
+string = ${ "\"" ~ str_inner ~ "\"" }
+str_inner = @{ str_char* }
+str_char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
 symbol = { identifier }
-atom = _{ bool | int | float | symbol }
+atom = _{ bool | int | float | string | symbol }
 
 constant = { atom }
 list = { "(" ~ expression* ~ ")" }
