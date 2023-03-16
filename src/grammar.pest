@@ -1,0 +1,21 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+identifier = @{
+    (("+" | "-" | "*") ~ (!("(" | ")" | ASCII_DIGIT | WHITESPACE) ~ ANY)*)
+    | (ASCII_ALPHA ~ (!("(" | ")" | WHITESPACE) ~ ANY)*)
+}
+
+bool = { ("#t" | "#f") }
+int = @{ ("-" | "+")? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) ~ !("." | ^"e") }
+float = @{
+    ("-" | "+")?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)?
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+symbol = { identifier }
+atom = _{ bool | int | float | symbol }
+
+constant = { atom }
+list = { "(" ~ expression* ~ ")" }
+expression = _{ constant | list }
