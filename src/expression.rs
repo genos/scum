@@ -10,11 +10,27 @@ impl fmt::Display for Identifier {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expression {
-    Atom(Identifier),
+pub enum Atom {
     Bool(bool),
-    Int(i64),
     Float(f64),
+    Int(i64),
+    Symbol(Identifier),
+}
+
+impl fmt::Display for Atom {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Atom::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
+            Atom::Float(x) => write!(f, "{x:?}"),
+            Atom::Int(n) => write!(f, "{n}"),
+            Atom::Symbol(s) => write!(f, "{s}"),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Expression {
+    Constant(Atom),
     List(Vec<Expression>),
 }
 
@@ -31,10 +47,7 @@ fn _paren<T: fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expression::Atom(i) => write!(f, "{i}"),
-            Expression::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
-            Expression::Int(n) => write!(f, "{n}"),
-            Expression::Float(x) => write!(f, "{x:?}"),
+            Expression::Constant(x) => write!(f, "{x}"),
             Expression::List(xs) => _paren(xs, f),
         }
     }

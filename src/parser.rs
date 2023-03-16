@@ -1,13 +1,13 @@
-use crate::expression::{Expression, Identifier};
+use crate::expression::{Atom, Expression, Identifier};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{anychar, char, digit1, multispace0},
-    combinator::{cut, fail, map, map_res, verify},
+    character::complete::{anychar, char, digit1, multispace0, multispace1},
+    combinator::{cut, fail, map, map_res, value, verify},
     error::{context, VerboseError},
-    multi::many0,
+    multi::{many0, separated_list0},
     number::complete::double,
-    sequence::{delimited, pair, preceded},
+    sequence::{delimited, pair, preceded, terminated},
     IResult, Parser,
 };
 
@@ -21,93 +21,84 @@ fn _conv_err(e: VerboseError<&str>) -> VerboseError<String> {
     }
 }
 
-type ParseResult<'a, T = Expression> = IResult<&'a str, T, VerboseError<&'a str>>;
+fn _is_protected(x: &char, xs: &[char]) -> bool {
+    x.is_whitespace()
+        || x.is_numeric()
+        || *x == '('
+        || *x == ')'
+        || (*x == '#' && xs.first().map(|&c| c == 't' || c == 'f').unwrap_or(false))
+        || ((*x == '-' || *x == '+') && xs.first().map(|&c| c.is_numeric()).unwrap_or(false))
+        || xs
+            .iter()
+            .any(|&c| c == '(' || c == ')' || c.is_whitespace())
+}
+
+type ParseResult<'a, T> = IResult<&'a str, T, VerboseError<&'a str>>;
+
+fn _identifier(input: &str) -> ParseResult<Identifier> {
+    map(
+        verify(pair(anychar, many0(anychar)), |(x, xs)| {
+            !_is_protected(x, xs)
+        }),
+        |(x, xs)| Identifier(format!("{}{}", x, xs.iter().collect::<String>())),
+    )(input)
+}
+
+fn _bool(input: &str) -> ParseResult<Atom> {
+    alt((
+        value(Atom::Bool(true), tag("#t")),
+        value(Atom::Bool(false), tag("#f")),
+    ))(input)
+}
+
+fn _float(input: &str) -> ParseResult<Atom> {
+    map(double, Atom::Float)(input)
+}
+
+fn _int(input: &str) -> ParseResult<Atom> {
+    alt((
+        map_res(digit1, |s: &str| s.parse::<i64>().map(Atom::Int)),
+        map(preceded(tag("-"), digit1), |s: &str| {
+            Atom::Int(-s.parse::<i64>().unwrap())
+        }),
+    ))(input)
+    .and_then(|(i, a)| {
+        if i.starts_with('.') || i.starts_with('e') {
+            fail(input)
+        } else {
+            Ok((i, a))
+        }
+    })
+}
+
+fn _symbol(input: &str) -> ParseResult<Atom> {
+    map(_identifier, Atom::Symbol)(input)
+}
+
+fn _atom(input: &str) -> ParseResult<Atom> {
+    // Be sure to have _int before _float!
+    alt((_bool, _int, _float, _symbol))(input)
+}
 
 fn _paren<'a, T>(
     inner: impl Parser<&'a str, T, VerboseError<&'a str>>,
 ) -> impl FnMut(&'a str) -> ParseResult<T> {
     delimited(
-        char('('),
-        preceded(multispace0, inner),
+        terminated(char('('), multispace0),
+        inner,
         cut(preceded(multispace0, char(')'))),
     )
 }
 
-fn _is_protected(x: &char, xs: &[char]) -> bool {
-    *x == '#' && (xs == vec!['t'] || xs == vec!['f'])
+fn _list(input: &str) -> ParseResult<Expression> {
+    _paren(map(
+        separated_list0(multispace1, _expression),
+        Expression::List,
+    ))(input)
 }
 
-fn _identifier(input: &str) -> ParseResult<Identifier> {
-    context(
-        "id",
-        map(
-            verify(
-                pair(
-                    context(
-                        "id first",
-                        verify(anychar, |&c| {
-                            c.is_alphabetic() || c == '+' || c == '*' || c == '-' || c == '/'
-                        }),
-                    ),
-                    context("id rest", many0(verify(anychar, |c| !c.is_whitespace()))),
-                ),
-                |(x, xs)| !_is_protected(x, xs),
-            ),
-            |(x, xs)| Identifier(format!("{}{}", x, xs.iter().collect::<String>())),
-        ),
-    )(input)
-}
-
-fn _expression(input: &str) -> ParseResult {
-    context("expr", alt((_atom, _bool, _float, _int, _list)))(input)
-}
-
-fn _atom(input: &str) -> ParseResult {
-    context("atom", map(_identifier, Expression::Atom))(input)
-}
-
-fn _bool(input: &str) -> ParseResult {
-    context(
-        "bool",
-        map(alt((tag("#t"), tag("#f"))), |s| Expression::Bool(s == "#t")),
-    )(input)
-}
-
-fn _float(input: &str) -> ParseResult {
-    context("float", double.map(Expression::Float))(input).and_then(|(i, e)| {
-        if let Expression::Float(x) = e {
-            if x.fract().abs() < 1e-16 {
-                fail(input)
-            } else {
-                Ok((i, e))
-            }
-        } else {
-            Ok((i, e))
-        }
-    })
-}
-
-fn _int(input: &str) -> ParseResult {
-    context(
-        "int",
-        alt((
-            map_res(digit1, |s: &str| s.parse::<i64>().map(Expression::Int)),
-            map(preceded(tag("-"), digit1), |s: &str| {
-                Expression::Int(-s.parse::<i64>().unwrap())
-            }),
-        )),
-    )(input)
-    .and_then(|(i, e)| {
-        if i.starts_with('.') {
-            fail(input)
-        } else {
-            Ok((i, e))
-        }
-    })
-}
-
-fn _list(input: &str) -> ParseResult {
-    context("list", _paren(map(many0(_expression), Expression::List)))(input)
+fn _expression(input: &str) -> ParseResult<Expression> {
+    alt((map(_atom, Expression::Constant), _list))(input)
 }
 
 #[cfg(test)]
@@ -116,39 +107,45 @@ mod test {
     use proptest::prelude::*;
 
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
-        (
-            any::<char>().prop_filter("first", |&c| {
-                c.is_ascii_alphabetic() || c == '+' || c == '*' || c == '-' || c == '/'
-            }),
-            any::<String>().prop_filter("rest", |s| !(s.chars().any(|c| c.is_whitespace()))),
-        )
-            .prop_map(|(c, s)| Identifier(format!("{c}{s}")))
+        (any::<char>(), any::<Vec<char>>())
+            .prop_filter("filters", |(x, xs)| !_is_protected(x, xs))
+            .prop_map(|(c, s)| Identifier(format!("{}{}", c, s.iter().collect::<String>())))
+    }
+
+    fn arb_atom() -> impl Strategy<Value = Atom> {
+        prop_oneof![
+            any::<bool>().prop_map(Atom::Bool),
+            any::<f64>().prop_map(Atom::Float),
+            any::<i64>().prop_map(Atom::Int),
+            arb_identifier().prop_map(Atom::Symbol),
+        ]
     }
 
     fn arb_expression() -> impl Strategy<Value = Expression> {
         // https://docs.rs/proptest/latest/proptest/prelude/trait.Strategy.html#method.prop_recursive
-        let leaf = prop_oneof![
-            arb_identifier().prop_map(Expression::Atom),
-            any::<bool>().prop_map(Expression::Bool),
-            any::<i64>().prop_map(Expression::Int),
-            (f32::MIN..f32::MAX).prop_map(|f| Expression::Float(f as f64)),
-        ];
-        leaf.prop_recursive(
-            4,  // No more than 4 branch levels deep
-            64, // Target around 64 total elements
-            16, // Each collection is up to 16 elements long
-            |element| {
-                prop_oneof![
-                    prop::collection::vec(element.clone(), 0..16).prop_map(Expression::List),
-                ]
-            },
-        )
+        arb_atom()
+            .prop_map(|a| Expression::Constant(a))
+            .prop_recursive(
+                4,  // No more than 4 branch levels deep
+                64, // Target around 64 total elements
+                16, // Each collection is up to 16 elements long
+                |element| {
+                    prop_oneof![
+                        prop::collection::vec(element.clone(), 0..16).prop_map(Expression::List),
+                    ]
+                },
+            )
     }
 
     proptest! {
         #[test]
         fn arb_id_ok(i in arb_identifier()) {
             prop_assert_eq!(i.clone(), i.clone())
+        }
+
+        #[test]
+        fn arb_atom_ok(a in arb_atom()) {
+            prop_assert_eq!(a.clone(), a.clone())
         }
 
         #[test]
@@ -167,8 +164,20 @@ mod test {
         }
 
         #[test]
+        fn atom_round_trip(a in arb_atom()) {
+            let s = a.clone().to_string();
+            dbg!(&s);
+            let p = _atom(&s);
+            prop_assert!(p.is_ok());
+            let (rest, a2) = p.unwrap();
+            prop_assert_eq!(rest, "");
+            prop_assert_eq!(a2, a);
+        }
+
+
+        #[test]
         fn expr_round_trip(exp in arb_expression()) {
-            dbg!(&exp);
+            // dbg!(&exp);
             let s = exp.clone().to_string();
             let p = _expression(&s);
             dbg!(&s);
