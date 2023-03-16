@@ -7,7 +7,7 @@ use pest_derive::Parser;
 #[grammar = "grammar.pest"]
 struct ScumParser;
 
-pub(crate) fn parse(input: &str) -> ScumResult<Expression> {
+pub fn parse(input: &str) -> ScumResult<Expression> {
     let mut xs = vec![];
     let pairs = ScumParser::parse(Rule::expression, input)?;
     for x in pairs {
