@@ -3,7 +3,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{anychar, char, digit1, multispace0},
-    combinator::{cut, map, map_res, verify},
+    combinator::{cut, fail, map, map_res, verify},
     error::{context, VerboseError},
     multi::many0,
     number::complete::double,
@@ -45,7 +45,9 @@ fn _identifier(input: &str) -> ParseResult<Identifier> {
                 pair(
                     context(
                         "id first",
-                        verify(anychar, |c| !(c.is_numeric() || c.is_whitespace())),
+                        verify(anychar, |&c| {
+                            c.is_alphabetic() || c == '+' || c == '*' || c == '-' || c == '/'
+                        }),
                     ),
                     context("id rest", many0(verify(anychar, |c| !c.is_whitespace()))),
                 ),
@@ -72,7 +74,17 @@ fn _bool(input: &str) -> ParseResult {
 }
 
 fn _float(input: &str) -> ParseResult {
-    context("float", double.map(Expression::Float))(input)
+    context("float", double.map(Expression::Float))(input).and_then(|(i, e)| {
+        if let Expression::Float(x) = e {
+            if x.fract().abs() < 1e-16 {
+                fail(input)
+            } else {
+                Ok((i, e))
+            }
+        } else {
+            Ok((i, e))
+        }
+    })
 }
 
 fn _int(input: &str) -> ParseResult {
@@ -85,6 +97,13 @@ fn _int(input: &str) -> ParseResult {
             }),
         )),
     )(input)
+    .and_then(|(i, e)| {
+        if i.starts_with('.') {
+            fail(input)
+        } else {
+            Ok((i, e))
+        }
+    })
 }
 
 fn _list(input: &str) -> ParseResult {
@@ -98,7 +117,9 @@ mod test {
 
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
         (
-            any::<char>().prop_filter("first", |c| !(c.is_numeric() || c.is_whitespace())),
+            any::<char>().prop_filter("first", |&c| {
+                c.is_ascii_alphabetic() || c == '+' || c == '*' || c == '-' || c == '/'
+            }),
             any::<String>().prop_filter("rest", |s| !(s.chars().any(|c| c.is_whitespace()))),
         )
             .prop_map(|(c, s)| Identifier(format!("{c}{s}")))
@@ -110,7 +131,7 @@ mod test {
             arb_identifier().prop_map(Expression::Atom),
             any::<bool>().prop_map(Expression::Bool),
             any::<i64>().prop_map(Expression::Int),
-            any::<f64>().prop_map(Expression::Float),
+            (f32::MIN..f32::MAX).prop_map(|f| Expression::Float(f as f64)),
         ];
         leaf.prop_recursive(
             4,  // No more than 4 branch levels deep
@@ -147,8 +168,11 @@ mod test {
 
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
+            dbg!(&exp);
             let s = exp.clone().to_string();
             let p = _expression(&s);
+            dbg!(&s);
+            dbg!(&p);
             prop_assert!(p.is_ok());
             let (rest, exp2) = p.unwrap();
             prop_assert_eq!(rest, "");

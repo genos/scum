@@ -34,7 +34,7 @@ impl fmt::Display for Expression {
             Expression::Atom(i) => write!(f, "{i}"),
             Expression::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
             Expression::Int(n) => write!(f, "{n}"),
-            Expression::Float(x) => write!(f, "{x}"),
+            Expression::Float(x) => write!(f, "{x:?}"),
             Expression::List(xs) => _paren(xs, f),
         }
     }
