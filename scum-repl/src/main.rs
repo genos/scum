@@ -1,4 +1,4 @@
-use rustyline::{Config, EditMode, Editor, error::ReadlineError};
+use rustyline::{error::ReadlineError, Config, EditMode, Editor};
 use scum_lib::parse;
 
 #[derive(Debug, thiserror::Error)]
@@ -21,18 +21,18 @@ fn main() -> Result<(), ReplError> {
                 rl.add_history_entry(line.as_str())?;
                 let parsed = parse(&line)?;
                 println!("Parsed: {}", parsed);
-            },
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
-                break
-            },
+                break;
+            }
             Err(ReadlineError::Eof) => {
                 println!("CTRL-D");
-                break
-            },
+                break;
+            }
             Err(err) => {
                 println!("Error: {:?}", err);
-                break
+                break;
             }
         }
     }
