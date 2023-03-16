@@ -14,6 +14,7 @@ pub enum Atom {
     Bool(bool),
     Float(f64),
     Int(i64),
+    Str(String),
     Symbol(Identifier),
 }
 
@@ -23,6 +24,7 @@ impl fmt::Display for Atom {
             Atom::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
             Atom::Float(x) => write!(f, "{x:?}"),
             Atom::Int(n) => write!(f, "{n}"),
+            Atom::Str(s) => write!(f, "\"{s}\""),
             Atom::Symbol(s) => write!(f, "{s}"),
         }
     }
