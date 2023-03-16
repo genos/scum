@@ -2,8 +2,8 @@ use crate::expression::{Atom, Expression, Identifier};
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{anychar, char, digit1, multispace0, multispace1},
-    combinator::{cut, fail, map, map_res, value, verify},
+    character::complete::{anychar, char, i64, multispace0, multispace1},
+    combinator::{cut, fail, map, value, verify},
     error::{context, VerboseError},
     multi::{many0, separated_list0},
     number::complete::double,
@@ -59,14 +59,8 @@ fn _float(input: &str) -> ParseResult<Atom> {
 }
 
 fn _int(input: &str) -> ParseResult<Atom> {
-    alt((
-        map_res(digit1, |s: &str| s.parse::<i64>().map(Atom::Int)),
-        map_res(preceded(tag("-"), digit1), |s: &str| {
-            s.parse::<i64>().map(|n| Atom::Int(-n))
-        }),
-    ))(input)
-    .and_then(|(i, a)| {
-        if i.starts_with('.') || i.starts_with('e') {
+    map(i64, Atom::Int)(input).and_then(|(i, a)| {
+        if i.starts_with('.') || i.starts_with('e') || i.starts_with('E') {
             fail(input)
         } else {
             Ok((i, a))
@@ -79,7 +73,7 @@ fn _symbol(input: &str) -> ParseResult<Atom> {
 }
 
 fn _atom(input: &str) -> ParseResult<Atom> {
-    // Be sure to have _int before _float!
+    // Be sure that _int happens before _float!
     alt((_bool, _int, _float, _symbol))(input)
 }
 
@@ -112,18 +106,6 @@ fn _expression(input: &str) -> ParseResult<Expression> {
 mod test {
     use super::*;
     use proptest::prelude::*;
-
-    #[test]
-    fn doth_this_blend() {
-        let x = Expression::List(vec![
-            Expression::Constant(Atom::Symbol(Identifier("a".to_string()))),
-            Expression::Constant(Atom::Symbol(Identifier("a".to_string()))),
-        ]);
-        let s = x.to_string();
-        let p = _expression(&s);
-        dbg!(&p);
-        assert!(p.is_ok());
-    }
 
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
         (any::<char>(), any::<Vec<char>>())
@@ -182,26 +164,26 @@ mod test {
                 prop_assert_eq!(i2, i);
             }
 
-    //         #[test]
-    //         fn atom_round_trip(a in arb_atom()) {
-    //             let s = a.clone().to_string();
-    //             let p = _atom(&s);
-    //             prop_assert!(p.is_ok());
-    //             let (rest, a2) = p.unwrap();
-    //             prop_assert_eq!(rest, "");
-    //             prop_assert_eq!(a2, a);
-    //         }
+            #[test]
+            fn atom_round_trip(a in arb_atom()) {
+                let s = a.clone().to_string();
+                let p = _atom(&s);
+                prop_assert!(p.is_ok());
+                let (rest, a2) = p.unwrap();
+                prop_assert_eq!(rest, "");
+                prop_assert_eq!(a2, a);
+            }
 
 
-    //         #[test]
-    //         fn expr_round_trip(exp in arb_expression()) {
-    //             let s = exp.clone().to_string();
-    //             let p = _expression(&s);
-    //             dbg!(&p);
-    //             prop_assert!(p.is_ok());
-    //             let (rest, exp2) = p.unwrap();
-    //             prop_assert_eq!(rest, "");
-    //             prop_assert_eq!(exp2, exp);
-    //         }
+            #[test]
+            fn expr_round_trip(exp in arb_expression()) {
+                let s = exp.clone().to_string();
+                let p = _expression(&s);
+                dbg!((&exp, &s, &p));
+                prop_assert!(p.is_ok());
+                let (rest, exp2) = p.unwrap();
+                prop_assert_eq!(rest, "");
+                prop_assert_eq!(exp2, exp);
+            }
         }
 }
