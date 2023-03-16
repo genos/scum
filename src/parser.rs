@@ -58,8 +58,8 @@ fn _float(input: &str) -> ParseResult<Atom> {
 fn _int(input: &str) -> ParseResult<Atom> {
     alt((
         map_res(digit1, |s: &str| s.parse::<i64>().map(Atom::Int)),
-        map(preceded(tag("-"), digit1), |s: &str| {
-            Atom::Int(-s.parse::<i64>().unwrap())
+        map_res(preceded(tag("-"), digit1), |s: &str| {
+            s.parse::<i64>().map(|n| Atom::Int(-n))
         }),
     ))(input)
     .and_then(|(i, a)| {
