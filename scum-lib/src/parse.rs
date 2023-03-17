@@ -30,7 +30,7 @@ impl From<pest::error::Error<Rule>> for ParsingError {
     }
 }
 
-pub fn parse_impl(input: &str) -> Result<Expression, ParsingError> {
+pub fn parse(input: &str) -> Result<Expression, ParsingError> {
     let mut xs = vec![];
     let pairs = ScumParser::parse(Rule::expression, input)?;
     for x in pairs {
@@ -58,7 +58,7 @@ pub fn parse_impl(input: &str) -> Result<Expression, ParsingError> {
             Rule::list => {
                 let mut ys = vec![];
                 for y in x.into_inner() {
-                    ys.push(parse_impl(y.as_str())?);
+                    ys.push(parse(y.as_str())?);
                 }
                 xs.push(Expression::List(ys));
             }
@@ -126,7 +126,7 @@ mod test {
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
             let s = exp.clone().to_string();
-            let p = parse_impl(&s);
+            let p = parse(&s);
             dbg!(&p);
             prop_assert!(p.is_ok());
             let exp2 = p.unwrap();
