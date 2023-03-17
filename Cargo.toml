@@ -1,2 +1,5 @@
 [workspace]
 members = ["scum-lib", "scum-repl"]
+
+[workspace.dependencies]
+thiserror = "1.0.39"
