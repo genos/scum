@@ -94,14 +94,14 @@ mod test {
     fn arb_expression() -> impl Strategy<Value = Expression> {
         // https://docs.rs/proptest/latest/proptest/prelude/trait.Strategy.html#method.prop_recursive
         arb_atom()
-            .prop_map(|a| Expression::Constant(a))
+            .prop_map(Expression::Constant)
             .prop_recursive(
                 4,  // No more than 4 branch levels deep
                 64, // Target around 64 total elements
                 16, // Each collection is up to 16 elements long
                 |element| {
                     prop_oneof![
-                        prop::collection::vec(element.clone(), 0..16).prop_map(Expression::List),
+                        prop::collection::vec(element, 0..16).prop_map(Expression::List),
                     ]
                 },
             )
@@ -109,23 +109,8 @@ mod test {
 
     proptest! {
         #[test]
-        fn arb_id_ok(i in arb_identifier()) {
-            prop_assert_eq!(i.clone(), i.clone())
-        }
-
-        #[test]
-        fn arb_atom_ok(a in arb_atom()) {
-            prop_assert_eq!(a.clone(), a.clone())
-        }
-
-        #[test]
-        fn arb_exp_ok(exp in arb_expression()) {
-            prop_assert_eq!(exp.clone(), exp.clone())
-        }
-
-        #[test]
         fn expr_round_trip(exp in arb_expression()) {
-            let s = exp.clone().to_string();
+            let s = exp.to_string();
             let p = parse(&s);
             dbg!(&p);
             prop_assert!(p.is_ok());
