@@ -4,4 +4,7 @@
 #
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
+cc 287f28a0becf6b9836b56778ea31f8d76d50ac641b50298b2c3df102d4498776 # shrinks to exp = List([Constant(Symbol(Identifier("!")))])
+cc ea18e9a73cfbdc4a3254926fdf7ea44ba3e12094e40230578d26372515ede7a9 # shrinks to a = Int(0)
+cc 170a34fdd3ff982bc2e4cad4e91e639b1a0a432ff90e725e8a5efbecd5afec08 # shrinks to a = Float(-0.0)
 cc 001083c20a701388a1ee22e05831e40bd3a6b77cd3fe9b37a23c235af77520c6 # shrinks to exp = List([List([Constant(Bool(false)), Constant(Bool(false))])])
