@@ -142,7 +142,6 @@ mod tests {
     proptest! {
         #[test]
         fn expr_round_trip(exp in arb_expression()) {
-            dbg!(&exp.to_string());
             let p = read(&exp.to_string());
             prop_assert!(p.is_ok());
             let exp2 = p.unwrap();
