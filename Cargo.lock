@@ -481,7 +481,6 @@ version = "0.1.0"
 dependencies = [
  "rustyline",
  "scum-lib",
- "thiserror",
 ]
 
 [[package]]

@@ -1,9 +1,6 @@
 [workspace]
 members = ["scum-lib", "scum-repl"]
 
-[workspace.dependencies]
-thiserror = "1.0.40"
-
 [profile.release]
 lto = true
 panic = "abort"
