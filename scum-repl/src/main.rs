@@ -1,5 +1,5 @@
 use rustyline::{error::ReadlineError, Config, EditMode, Editor};
-use scum_lib::parse;
+use scum_lib::read;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReplError {
@@ -19,8 +19,11 @@ fn main() -> Result<(), ReplError> {
         match rl.readline("λ>  ") {
             Ok(line) => {
                 rl.add_history_entry(line.as_str())?;
-                let parsed = parse(&line)?;
-                println!("Parsed: {}", parsed);
+                let parsed = read(&line)?;
+                println!("Parsed:");
+                for expression in parsed {
+                    println!("{expression}");
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");

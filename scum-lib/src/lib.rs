@@ -1,10 +1,10 @@
 mod error;
 mod expression;
-mod parse;
+mod read;
 
 pub use error::ScumError;
 pub use expression::Expression;
 
-pub fn parse(input: &str) -> Result<Expression, ScumError> {
-    parse::parse(input).map_err(Into::into)
+pub fn read(input: &str) -> Result<Vec<Expression>, ScumError> {
+    crate::read::read(input).map_err(Into::into)
 }
