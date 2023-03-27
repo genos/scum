@@ -12,3 +12,4 @@ cc fd23ca88638c27742013f80651aa390c266fc487a3f05437d4aea17a9b70e32f # shrinks to
 cc 433ea63df5e6ca7b90a5a363603e7ac24ff529e66a710009523e45092db91a73 # shrinks to exp = List([List([Constant(Symbol(Identifier("-")))])])
 cc a5417684add0a520209f94f71c15a039215379d97f69b34751435ebdd1ae4b1a # shrinks to exp = List([List([]), Constant(Bool(false))])
 cc 027f053883bd6bc543ddeb9fc8d534ad978203bad57528130b33818f7dc3017b # shrinks to exp = List([Constant(Symbol(Identifier("-᧐")))])
+cc efdd01a6daf4b0780c61f0981bf36adc55cd696c28a23d1e3de1b5b3125a9a2f # shrinks to exp = List([Constant(Symbol(Identifier("-")))])

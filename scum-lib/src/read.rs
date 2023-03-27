@@ -24,26 +24,24 @@ enum Token {
     OParen,
     #[token(")")]
     CParen,
-
     //     #[token("define")]
     //     Define,
     //     #[token("lambda")]
     //     Lambda,
+    //     #[token("if")]
+    //     If,
     #[regex("#t|#f", |lex| lex.slice() == "#t")]
     Bool(bool),
-    #[regex(r"[-+]?(?:0|[1-9][0-9]*)", |lex| lex.slice().parse(), priority = 3)]
+    #[regex(r"[-+]?(0|[1-9]\d*)", |lex| lex.slice().parse(), priority = 3)]
     Int(i64),
-    #[regex(r"[+-]?((\d+\.?\d*)|(\.\d+))(([eE][+-]?)?\d+)?", |lex| lex.slice().parse(), priority = 2)]
+    #[regex(r"[+-]?((\d+\.?\d*)|(\.\d+))([eE][+-]?\d+)?", |lex| lex.slice().parse(), priority = 2)]
     Float(f64),
-
-    #[regex("\"(?:[^\"]|\\\\\")*\"", |lex| unescape(lex.slice()))]
+    #[regex(r#""([^"]|\\")*""#, |lex| unescape(lex.slice()))]
     Str(String),
-
-    #[regex("[^ \\t\\r\\n\\f\"\\(\\)]+", |lex| lex.slice().parse())]
+    #[regex(r#"[^\s"\(\)]+"#, |lex| lex.slice().parse())]
     Symbol(String),
-
     #[error]
-    #[regex(r"[ \t\r\n\f]+", logos::skip)]
+    #[regex(r"\s+", logos::skip)]
     Error,
 }
 
@@ -87,6 +85,7 @@ mod tests {
         lex_check(")", Token::CParen);
         // lex_check("define", Token::Define);
         // lex_check("lambda", Token::Lambda);
+        // lex_check("if", Token::if);
         lex_check("#t", Token::Bool(true));
         lex_check("#f", Token::Bool(false));
         lex_check("1", Token::Int(1));
@@ -104,13 +103,13 @@ mod tests {
         lex_check("*asdf1234*", Token::Symbol("*asdf1234*".to_string()));
         lex_check("+", Token::Symbol("+".to_string()));
         lex_check("-", Token::Symbol("-".to_string()));
-        lex_check("-o", Token::Symbol("-o".to_string()));
+        lex_check("e3", Token::Symbol("e3".to_string()));
     }
 
     use proptest::prelude::*;
 
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
-        r##"([+[-]*][a-zA-Z!@#$%^&*[-]–—_=+,.<>?]*)|([a-zA-Z][a-zA-Z0-9!@#$%^&*[-]–—_=+,.<>?]*)"##
+        r#"([+[-]*][[:alpha:]!@#$%^&*[-]–—_=+,.<>?]*)|([:alpha:][[:alnum:]!@#$%^&*[-]–—_=+,.<>?]*)"#
             .prop_map(Identifier)
     }
 

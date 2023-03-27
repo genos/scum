@@ -19,22 +19,19 @@ fn main() -> Result<(), ReadlineError> {
                         }
                     }
                     Err(e) => {
-                        println!("{e}");
-                        continue;
+                        eprintln!("{e}");
                     }
                 }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
-                continue;
             }
             Err(ReadlineError::Eof) => {
                 println!("CTRL-D");
                 break;
             }
             Err(err) => {
-                println!("Error: {err:?}");
-                continue;
+                eprintln!("Error: {err:?}");
             }
         }
     }
