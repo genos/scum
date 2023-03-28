@@ -2,7 +2,7 @@
 
 // identifier
 identifier = @{ initial ~ subsequent* | ( "+" | "-" ) }
-initial = @{ ASCII_ALPHA_LOWER | "!" | "$" | "%" | "&" | "*" | "/" | ":" | "<" | "=" | ">" | "?" | "^" | "_" | "~" }
+initial = @{ ASCII_ALPHA | "!" | "$" | "%" | "&" | "*" | "/" | ":" | "<" | "=" | ">" | "?" | "^" | "_" | "~" }
 subsequent = @{ initial | ASCII_DIGIT | "+" | "-" | "." | "@" }
 
 // atom

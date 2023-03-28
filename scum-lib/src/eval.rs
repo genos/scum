@@ -16,7 +16,7 @@ pub(crate) struct Environment(RefCell<HashMap<Identifier, Rc<Expression>>>);
 
 impl Environment {
     pub(crate) fn eval(&self, expression: Expression) -> Result<Rc<Expression>, EvaluationError> {
-        self.eval_impl(Rc::new(expression))
+        self.eval_impl(&Rc::new(expression))
     }
     fn define(&self, identifier: &Identifier, expr: Rc<Expression>) {
         self.0.borrow_mut().insert(identifier.clone(), expr);
@@ -28,38 +28,38 @@ impl Environment {
             .ok_or_else(|| EvaluationError::NotFound(identifier.clone()))
             .cloned()
     }
-    fn eval_impl(&self, expression: Rc<Expression>) -> Result<Rc<Expression>, EvaluationError> {
-        match &*expression {
-            Expression::Constant(Atom::Symbol(s)) => self.lookup(s),
+    fn eval_impl(&self, expression: &Rc<Expression>) -> Result<Rc<Expression>, EvaluationError> {
+        match **expression {
+            Expression::Constant(Atom::Symbol(ref s)) => self.lookup(s),
             Expression::Constant(_) => Ok(expression.clone()),
-            Expression::Define(x, y) => {
+            Expression::Define(ref x, ref y) => {
                 let xx = if let Expression::Constant(Atom::Symbol(_)) = **x {
                     x.clone()
                 } else {
-                    self.eval_impl(x.clone())?
+                    self.eval_impl(x)?
                 };
                 if let Expression::Constant(Atom::Symbol(ref i)) = *xx {
-                    let yy = self.eval_impl(y.clone())?;
+                    let yy = self.eval_impl(y)?;
                     self.define(i, yy.clone());
                     Ok(yy)
                 } else {
                     Err(EvaluationError::ExpectedIdentifier(
-                        x.clone().to_string(),
-                        xx.clone().to_string(),
+                        x.to_string(),
+                        xx.to_string(),
                     ))
                 }
             }
-            Expression::If(cond, x, y) => {
+            Expression::If(ref cond, ref x, ref y) => {
                 let cond2 = if let Expression::Constant(Atom::Bool(_)) = **cond {
                     cond.clone()
                 } else {
-                    self.eval_impl(cond.clone())?
+                    self.eval_impl(cond)?
                 };
                 if let Expression::Constant(Atom::Bool(ref b)) = *cond2 {
                     if *b {
-                        self.eval_impl(x.clone())
+                        self.eval_impl(x)
                     } else {
-                        self.eval_impl(y.clone())
+                        self.eval_impl(y)
                     }
                 } else {
                     Err(EvaluationError::ExpectedBoolean(
@@ -68,10 +68,10 @@ impl Environment {
                     ))
                 }
             }
-            Expression::List(xs) => {
+            Expression::List(ref xs) => {
                 let mut ys = vec![];
                 for x in xs {
-                    let y = self.eval_impl(x.clone())?;
+                    let y = self.eval_impl(x)?;
                     ys.push(y);
                 }
                 Ok(Rc::new(Expression::List(ys)))

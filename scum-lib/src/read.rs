@@ -143,7 +143,7 @@ mod test {
     use proptest::prelude::*;
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
         // should match the identifier rule in grammar.pest
-        r"([a-z!%&*/:<=>?^_~][a-z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
+        r"([a-zA-Z!%&*/:<=>?^_~][a-zA-Z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
     }
 
     fn arb_atom() -> impl Strategy<Value = Atom> {
