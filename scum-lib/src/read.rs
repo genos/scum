@@ -14,12 +14,16 @@ pub enum ReadingError {
     TooShort,
     #[error("Invalid read: expected one expression, got {0}")]
     Invalid(usize),
+    #[error("Expected an expression to parse, but got {0:?}")]
+    UnexpectedRule(Rule),
     #[error("Unable to parse float: {0:#?}")]
     ParsingFloat(#[from] std::num::ParseFloatError),
     #[error("Unable to parse int: {0:#?}")]
     ParsingInt(#[from] std::num::ParseIntError),
     #[error("Unexpected compound rule in atomic statement: {0:?}")]
     CompoundInAtom(Rule),
+    #[error("Unable to parse atom: expeted 1 expression, found {0}")]
+    BadAtom(usize),
     #[error("Unable to parse define: expected 2 expressions, found {0}")]
     BadDefine(usize),
     #[error("Unable to parse if statment: expected 3 expressions, found {0}")]
@@ -60,35 +64,41 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut xs = vec![];
     for x in pairs {
         match x.as_rule() {
-            Rule::constant => xs.push(Rc::new(constant_to_expr(x.into_inner().next().unwrap())?)),
+            Rule::constant => xs.push(Rc::new(constant_to_expr(x.into_inner())?)),
             Rule::define => xs.push(Rc::new(define_to_expr(x.into_inner())?)),
             Rule::ifte => xs.push(Rc::new(ifte_to_expr(x.into_inner())?)),
             Rule::list => xs.push(Rc::new(list_to_expr(x.into_inner())?)),
-            _ => {}
+            r => return Err(ReadingError::UnexpectedRule(r)),
         }
     }
     if xs.len() == 1 {
-        // dirty hack, but at this point we _know_ that we own this expression
+        // This is a dirty hack, but at this point we _know_ that we own this expression
         Ok(unsafe { std::ptr::read(Rc::into_raw(xs.remove(0))) })
     } else {
         Ok(Expression::List(xs))
     }
 }
 
-fn constant_to_expr(pair: Pair<Rule>) -> Result<Expression, ReadingError> {
-    match pair.as_rule() {
-        Rule::bool => Ok(Expression::Constant(Atom::Bool(pair.as_str() == "#t"))),
-        Rule::int => Ok(Expression::Constant(Atom::Int(
-            pair.as_str().parse::<i64>()?,
-        ))),
-        Rule::float => Ok(Expression::Constant(Atom::Float(
-            pair.as_str().parse::<f64>()?,
-        ))),
-        Rule::str => Ok(Expression::Constant(Atom::Str(pair.as_str().to_string()))),
-        Rule::symbol => Ok(Expression::Constant(Atom::Symbol(Identifier(
-            pair.as_str().to_string(),
-        )))),
-        r => Err(ReadingError::CompoundInAtom(r)),
+fn constant_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut pieces = pairs.collect::<Vec<_>>();
+    if pieces.len() != 1 {
+        Err(ReadingError::BadAtom(pieces.len()))
+    } else {
+        let pair = pieces.remove(0);
+        match pair.as_rule() {
+            Rule::bool => Ok(Expression::Constant(Atom::Bool(pair.as_str() == "#t"))),
+            Rule::int => Ok(Expression::Constant(Atom::Int(
+                pair.as_str().parse::<i64>()?,
+            ))),
+            Rule::float => Ok(Expression::Constant(Atom::Float(
+                pair.as_str().parse::<f64>()?,
+            ))),
+            Rule::str => Ok(Expression::Constant(Atom::Str(pair.as_str().to_string()))),
+            Rule::symbol => Ok(Expression::Constant(Atom::Symbol(Identifier(
+                pair.as_str().to_string(),
+            )))),
+            r => Err(ReadingError::CompoundInAtom(r)),
+        }
     }
 }
 
