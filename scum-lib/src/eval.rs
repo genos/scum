@@ -63,7 +63,7 @@ impl Environment {
             Expression::List(xs) => {
                 let mut ys = vec![];
                 for x in xs {
-                    let y = self.eval_impl(x.clone().into())?;
+                    let y = self.eval_impl(x.clone())?;
                     ys.push(y);
                 }
                 Ok(Rc::new(Expression::List(ys)))

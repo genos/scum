@@ -10,7 +10,7 @@ use std::rc::Rc;
 pub enum ReadingError {
     #[error("Empty read")]
     Empty,
-    #[error("I expected to parse into two pairs, got only one")]
+    #[error("Expected to parse into two pairs, got only one")]
     TooShort,
     #[error("Invalid read: expected one expression, got {0}")]
     Invalid(usize),
@@ -68,7 +68,7 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
         }
     }
     if xs.len() == 1 {
-        let mut a = xs.remove(0).clone();
+        let mut a = xs.remove(0);
         let b = Rc::get_mut(&mut a).unwrap();
         Ok(b.clone())
     } else {
