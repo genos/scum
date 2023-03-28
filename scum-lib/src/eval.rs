@@ -33,10 +33,14 @@ impl Environment {
             Expression::Constant(Atom::Symbol(s)) => self.lookup(s),
             Expression::Constant(_) => Ok(expression.clone()),
             Expression::Define(x, y) => {
-                let xx = self.eval_impl(x.clone())?;
-                if let Expression::Constant(Atom::Symbol(i)) = &*xx {
+                let xx = if let Expression::Constant(Atom::Symbol(_)) = **x {
+                    x.clone()
+                } else {
+                    self.eval_impl(x.clone())?
+                };
+                if let Expression::Constant(Atom::Symbol(ref i)) = *xx {
                     let yy = self.eval_impl(y.clone())?;
-                    self.define(&i.clone(), yy.clone());
+                    self.define(i, yy.clone());
                     Ok(yy)
                 } else {
                     Err(EvaluationError::ExpectedIdentifier(
@@ -46,9 +50,13 @@ impl Environment {
                 }
             }
             Expression::If(cond, x, y) => {
-                let cond2 = self.eval_impl(cond.clone())?;
-                if let Expression::Constant(Atom::Bool(b)) = *cond2 {
-                    if b {
+                let cond2 = if let Expression::Constant(Atom::Bool(_)) = **cond {
+                    cond.clone()
+                } else {
+                    self.eval_impl(cond.clone())?
+                };
+                if let Expression::Constant(Atom::Bool(ref b)) = *cond2 {
+                    if *b {
                         self.eval_impl(x.clone())
                     } else {
                         self.eval_impl(y.clone())

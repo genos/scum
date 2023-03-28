@@ -25,7 +25,7 @@ pub enum ReadingError {
     #[error("Unable to parse if statment: expected 3 expressions, found {0}")]
     BadIf(usize),
     #[error("Reading error: {location:?}, {line_col:?} {line}")]
-    General {
+    Other {
         location: pest::error::InputLocation,
         line_col: pest::error::LineColLocation,
         line: String,
@@ -34,7 +34,7 @@ pub enum ReadingError {
 
 impl From<pest::error::Error<Rule>> for ReadingError {
     fn from(e: pest::error::Error<Rule>) -> Self {
-        Self::General {
+        Self::Other {
             location: e.clone().location,
             line_col: e.clone().line_col,
             line: e.line().to_string(),
@@ -68,9 +68,8 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
         }
     }
     if xs.len() == 1 {
-        let mut a = xs.remove(0);
-        let b = Rc::get_mut(&mut a).unwrap();
-        Ok(b.clone())
+        // dirty hack, but at this point we _know_ that we own this expression
+        Ok(unsafe { std::ptr::read(Rc::into_raw(xs.remove(0))) })
     } else {
         Ok(Expression::List(xs))
     }
