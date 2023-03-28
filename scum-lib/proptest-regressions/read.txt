@@ -13,3 +13,7 @@ cc 433ea63df5e6ca7b90a5a363603e7ac24ff529e66a710009523e45092db91a73 # shrinks to
 cc a5417684add0a520209f94f71c15a039215379d97f69b34751435ebdd1ae4b1a # shrinks to exp = List([List([]), Constant(Bool(false))])
 cc 027f053883bd6bc543ddeb9fc8d534ad978203bad57528130b33818f7dc3017b # shrinks to exp = List([Constant(Symbol(Identifier("-᧐")))])
 cc efdd01a6daf4b0780c61f0981bf36adc55cd696c28a23d1e3de1b5b3125a9a2f # shrinks to exp = List([Constant(Symbol(Identifier("-")))])
+cc a78f8915a73a59bfb3e205716e057f3e40cbdcd217641edcc033013707d942fa # shrinks to atom = Symbol(Identifier("!0"))
+cc bdccb1101aa19c75ed69dfd217c5f6299ca15b6f60256537dbd19dae766320c5 # shrinks to atom = Str("\"\\\n\"")
+cc 5545a97e62bf6cd249c825e50afdc49386cb09c8e6a661c77ebb07106b3ffdc2 # shrinks to atom = Float(-0.0)
+cc ca1dc12f3713534647904b467f4b5bcc8f2858a10261b6ba154dd24f27c5753f # shrinks to atom = Symbol(Identifier("#"))

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Identifier(pub String);
 
@@ -11,9 +13,9 @@ pub enum Atom {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expression<'a> {
+pub enum Expression {
     Constant(Atom),
-    Define(&'a Expression<'a>, &'a Expression<'a>),
-    If(&'a Expression<'a>, &'a Expression<'a>, &'a Expression<'a>),
-    List(Vec<Expression<'a>>),
+    Define(Rc<Expression>, Rc<Expression>),
+    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
+    List(Vec<Rc<Expression>>),
 }

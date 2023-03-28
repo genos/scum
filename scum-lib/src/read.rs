@@ -1,82 +1,188 @@
 use crate::expression::{Atom, Expression, Identifier};
-use once_cell::sync::Lazy;
-use regex::{CaptureMatches, Regex};
-use std::iter::Peekable;
+use pest::{
+    iterators::{Pair, Pairs},
+    Parser,
+};
+use pest_derive::Parser;
+use std::rc::Rc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
-    #[error("Unexpeted end of input")]
-    Eoi,
-    #[error("Unclosed string")]
-    UnclosedString,
-    #[error("Unrecognized token: {0}")]
-    UnrecognizedToken(String),
+    #[error("Empty read")]
+    Empty,
+    #[error("I expected to parse into two pairs, got only one")]
+    TooShort,
+    #[error("Invalid read: expected one expression, got {0}")]
+    Invalid(usize),
+    #[error("Unable to parse float: {0:#?}")]
+    ParsingFloat(#[from] std::num::ParseFloatError),
+    #[error("Unable to parse int: {0:#?}")]
+    ParsingInt(#[from] std::num::ParseIntError),
+    #[error("Unexpected compound rule in atomic statement: {0:?}")]
+    CompoundInAtom(Rule),
+    #[error("Unable to parse define: expected 2 expressions, found {0}")]
+    BadDefine(usize),
+    #[error("Unable to parse if statment: expected 3 expressions, found {0}")]
+    BadIf(usize),
+    #[error("Reading error: {location:?}, {line_col:?} {line}")]
+    General {
+        location: pest::error::InputLocation,
+        line_col: pest::error::LineColLocation,
+        line: String,
+    },
 }
-static TOKEN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r###"\s*([()]|"(?:\\.|[^\\"])*"?|;.*|[^\s(";)]+)"###).unwrap());
 
-pub(crate) fn read(input: &str) -> Result<Expression, ReadingError> {
-    let mut reader: Peekable<CaptureMatches> = new_reader(input);
-    todo!()
-}
-
-fn new_reader(input: &str) -> Peekable<CaptureMatches> {
-    TOKEN.captures_iter(input).peekable()
-}
-
-static INT: Lazy<Regex> = Lazy::new(|| Regex::new(r"^-?[0-9]+$").unwrap());
-static FLOAT: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?").unwrap());
-static STR: Lazy<Regex> = Lazy::new(|| Regex::new(r#""([^"]|\\")*""#).unwrap());
-static SYMBOL: Lazy<Regex> = Lazy::new(|| Regex::new(r#"[^\s"\(\)]+"#).unwrap());
-
-fn read_atom(reader: &mut Peekable<CaptureMatches>) -> Result<Atom, ReadingError> {
-    match reader.next() {
-        None => Err(ReadingError::Eoi),
-        Some(capture) => match &capture[1] {
-            "#t" => Ok(Atom::Bool(true)),
-            "#f" => Ok(Atom::Bool(false)),
-            t if INT.is_match(t) => Ok(Atom::Int(t.parse().unwrap())),
-            t if FLOAT.is_match(t) && !t.starts_with('e') && !t.starts_with('E') => {
-                Ok(Atom::Float(t.parse().unwrap()))
-            }
-            t if STR.is_match(t) => Ok(Atom::Str(t[1..t.len() - 1].to_string())),
-            t if t.starts_with('"') => Err(ReadingError::UnclosedString), // TODO necessary?
-            t if SYMBOL.is_match(t) => Ok(Atom::Symbol(Identifier(t.to_string()))),
-            t => Err(ReadingError::UnrecognizedToken(t.to_string())),
-        },
+impl From<pest::error::Error<Rule>> for ReadingError {
+    fn from(e: pest::error::Error<Rule>) -> Self {
+        Self::General {
+            location: e.clone().location,
+            line_col: e.clone().line_col,
+            line: e.line().to_string(),
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rstest::rstest;
+#[derive(Parser)]
+#[grammar = "grammar.pest"]
+struct ScumParser;
 
-    #[rstest]
-    #[case::read_true("#t", Atom::Bool(true))]
-    #[case::read_false("#f", Atom::Bool(false))]
-    #[case::read_int_1("1", Atom::Int(1))]
-    #[case::read_int_neg_1("-1", Atom::Int(-1))]
-    #[case::read_float_1("1.", Atom::Float(1.0))]
-    #[case::read_float_neg_1("-1.", Atom::Float(-1.0))]
-    #[case::read_float_point_1(".1", Atom::Float(0.1))]
-    #[case::read_float_neg_point_1("-.1", Atom::Float(-0.1))]
-    #[case::read_float_1e3("1e3", Atom::Float(1e3))]
-    #[case::read_float_neg_1e3("-1e3", Atom::Float(-1e3))]
-    #[case::read_float_1ep3("1e+3", Atom::Float(1e3))]
-    #[case::read_float_neg_1ep3("-1e+3", Atom::Float(-1e3))]
-    #[case::read_float_1en3("1e-3", Atom::Float(1e-3))]
-    #[case::read_float_neg_1en3("-1e-3", Atom::Float(-1e-3))]
-    #[case::read_string_empty("\"\"", Atom::Str(String::new()))]
-    #[case::read_string_asdf("\"asdf\"", Atom::Str("asdf".to_string()))]
-    #[case::read_symbol_asdf("asdf", Atom::Symbol(Identifier("asdf".to_string())))]
-    #[case::read_symbol_plus_asdf_plus("+asdf+", Atom::Symbol(Identifier("+asdf+".to_string())))]
-    #[case::read_symbol_plus("+", Atom::Symbol(Identifier("+".to_string())))]
-    #[case::read_symbol_e3("e3", Atom::Symbol(Identifier("e3".to_string())))]
-    fn reading_atoms(#[case] input: &str, #[case] expected: Atom) {
-        let a = read_atom(&mut new_reader(input));
-        assert!(a.is_ok());
-        assert_eq!(a.unwrap(), expected);
+pub(crate) fn read(input: &str) -> Result<Expression, ReadingError> {
+    let mut pairs = ScumParser::parse(Rule::input, input)?.collect::<Vec<_>>();
+    match pairs.len() {
+        0 => Err(ReadingError::Empty),
+        1 => Err(ReadingError::TooShort),
+        n if n > 2 => Err(ReadingError::Invalid(n - 1)),
+        _ => read_impl(pairs.remove(0).into_inner()),
+    }
+}
+
+fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut xs = vec![];
+    for x in pairs {
+        match x.as_rule() {
+            Rule::constant => xs.push(Rc::new(constant_to_expr(x.into_inner().next().unwrap())?)),
+            Rule::define => xs.push(Rc::new(define_to_expr(x.into_inner())?)),
+            Rule::ifte => xs.push(Rc::new(ifte_to_expr(x.into_inner())?)),
+            Rule::list => xs.push(Rc::new(list_to_expr(x.into_inner())?)),
+            _ => {}
+        }
+    }
+    if xs.len() == 1 {
+        let mut a = xs.remove(0).clone();
+        let b = Rc::get_mut(&mut a).unwrap();
+        Ok(b.clone())
+    } else {
+        Ok(Expression::List(xs))
+    }
+}
+
+fn constant_to_expr(pair: Pair<Rule>) -> Result<Expression, ReadingError> {
+    match pair.as_rule() {
+        Rule::bool => Ok(Expression::Constant(Atom::Bool(pair.as_str() == "#t"))),
+        Rule::int => Ok(Expression::Constant(Atom::Int(
+            pair.as_str().parse::<i64>()?,
+        ))),
+        Rule::float => Ok(Expression::Constant(Atom::Float(
+            pair.as_str().parse::<f64>()?,
+        ))),
+        Rule::str => Ok(Expression::Constant(Atom::Str(pair.as_str().to_string()))),
+        Rule::symbol => Ok(Expression::Constant(Atom::Symbol(Identifier(
+            pair.as_str().to_string(),
+        )))),
+        r => Err(ReadingError::CompoundInAtom(r)),
+    }
+}
+
+fn define_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut pieces = pairs.collect::<Vec<_>>();
+    if pieces.len() != 2 {
+        Err(ReadingError::BadDefine(pieces.len()))
+    } else {
+        let key = read_impl(single(pieces.remove(0)))?;
+        let value = read_impl(single(pieces.remove(0)))?;
+        Ok(Expression::Define(Rc::new(key), Rc::new(value)))
+    }
+}
+
+fn ifte_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut pieces = pairs.collect::<Vec<_>>();
+    if pieces.len() != 3 {
+        Err(ReadingError::BadIf(pieces.len()))
+    } else {
+        let cond = read_impl(single(pieces.remove(0)))?;
+        let x = read_impl(single(pieces.remove(0)))?;
+        let y = read_impl(single(pieces.remove(0)))?;
+        Ok(Expression::If(Rc::new(cond), Rc::new(x), Rc::new(y)))
+    }
+}
+
+fn list_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut xs = vec![];
+    for pair in pairs {
+        xs.push(Rc::new(read_impl(single(pair))?));
+    }
+    Ok(Expression::List(xs))
+}
+
+fn single(p: Pair<Rule>) -> Pairs<Rule> {
+    Pairs::single(p.into_inner().next().unwrap())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proptest::prelude::*;
+    fn arb_identifier() -> impl Strategy<Value = Identifier> {
+        // should match the identifier rule in grammar.pest
+        r"([a-z!%&*/:<=>?^_~][a-z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
+    }
+
+    fn arb_atom() -> impl Strategy<Value = Atom> {
+        prop_oneof![
+            any::<bool>().prop_map(Atom::Bool),
+            any::<f64>().prop_map(Atom::Float),
+            any::<i64>().prop_map(Atom::Int),
+            r#""[\w\s\d\u{7f}]*""#.prop_map(Atom::Str),
+            arb_identifier().prop_map(Atom::Symbol),
+        ]
+    }
+
+    fn arb_expression() -> impl Strategy<Value = Expression> {
+        // https://docs.rs/proptest/latest/proptest/prelude/trait.Strategy.html#method.prop_recursive
+        arb_atom().prop_map(Expression::Constant).prop_recursive(
+            4,  // No more than 4 branch levels deep
+            64, // Target around 64 total elements
+            16, // Each collection is up to 16 elements long
+            |atom| {
+                prop_oneof![
+                    (atom.clone(), atom.clone())
+                        .prop_map(|(key, value)| Expression::Define(Rc::new(key), Rc::new(value))),
+                    (atom.clone(), atom.clone(), atom.clone()).prop_map(|(cond, x, y)| {
+                        Expression::If(Rc::new(cond), Rc::new(x), Rc::new(y))
+                    }),
+                    prop::collection::vec(atom, 0..16)
+                        .prop_map(|xs| Expression::List(xs.into_iter().map(Rc::new).collect())),
+                ]
+            },
+        )
+    }
+
+    proptest! {
+        #[test]
+        fn atom_round_trip(atom in arb_atom()) {
+            let c = Expression::Constant(atom);
+            let s = c.to_string();
+            let p = read(&s);
+            prop_assert!(p.is_ok());
+            prop_assert_eq!(p.unwrap(), c);
+        }
+
+        #[test]
+        fn expression_round_trip(exp in arb_expression()) {
+            let s = exp.to_string();
+            let p = read(&s);
+            prop_assert!(p.is_ok());
+            prop_assert_eq!(p.unwrap(), exp);
+        }
     }
 }

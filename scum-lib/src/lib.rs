@@ -8,15 +8,14 @@ pub use error::ScumError;
 
 #[derive(Default)]
 pub struct Scum {
-    //env: crate::eval::Environment,
+    env: crate::eval::Environment,
 }
 
 impl Scum {
     pub fn read_eval_string(&self, input: &str) -> Result<String, ScumError> {
-        let mut output = String::new();
-        // for expression in crate::read::read(input).map_err(ScumError::from)? {
-        //     output = self.env.eval(expression)?.to_string();
-        // }
-        Ok(output)
+        crate::read::read(input)
+            .map_err(ScumError::from)
+            .and_then(|x| self.env.eval(x).map_err(ScumError::from))
+            .map(|expression| expression.to_string())
     }
 }

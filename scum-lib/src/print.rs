@@ -13,7 +13,7 @@ impl fmt::Display for Atom {
             Atom::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
             Atom::Float(x) => write!(f, "{x:?}"),
             Atom::Int(n) => write!(f, "{n}"),
-            Atom::Str(s) => write!(f, "\"{s}\""),
+            Atom::Str(s) => write!(f, "{s}"),
             Atom::Symbol(s) => write!(f, "{s}"),
         }
     }
@@ -29,7 +29,7 @@ fn _paren<T: fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, ")")
 }
 
-impl fmt::Display for Expression<'_> {
+impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Expression::Constant(x) => write!(f, "{x}"),
