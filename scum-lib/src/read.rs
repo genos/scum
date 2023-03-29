@@ -4,7 +4,7 @@ use pest::{
     Parser,
 };
 use pest_derive::Parser;
-use std::rc::Rc;
+use std::boxed::Box;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
@@ -64,16 +64,15 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut xs = vec![];
     for x in pairs {
         match x.as_rule() {
-            Rule::constant => xs.push(Rc::new(constant_to_expr(x.into_inner())?)),
-            Rule::define => xs.push(Rc::new(define_to_expr(x.into_inner())?)),
-            Rule::ifte => xs.push(Rc::new(ifte_to_expr(x.into_inner())?)),
-            Rule::list => xs.push(Rc::new(list_to_expr(x.into_inner())?)),
+            Rule::constant => xs.push(constant_to_expr(x.into_inner())?),
+            Rule::define => xs.push(define_to_expr(x.into_inner())?),
+            Rule::ifte => xs.push(ifte_to_expr(x.into_inner())?),
+            Rule::list => xs.push(list_to_expr(x.into_inner())?),
             r => return Err(ReadingError::UnexpectedRule(r)),
         }
     }
     if xs.len() == 1 {
-        // This is a dirty hack, but at this point we _know_ that we own this expression
-        Ok(unsafe { std::ptr::read(Rc::into_raw(xs.remove(0))) })
+        Ok(xs.remove(0))
     } else {
         Ok(Expression::List(xs))
     }
@@ -109,7 +108,7 @@ fn define_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     } else {
         let key = read_impl(single(pieces.remove(0)))?;
         let value = read_impl(single(pieces.remove(0)))?;
-        Ok(Expression::Define(Rc::new(key), Rc::new(value)))
+        Ok(Expression::Define(Box::new(key), Box::new(value)))
     }
 }
 
@@ -121,14 +120,14 @@ fn ifte_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
         let cond = read_impl(single(pieces.remove(0)))?;
         let x = read_impl(single(pieces.remove(0)))?;
         let y = read_impl(single(pieces.remove(0)))?;
-        Ok(Expression::If(Rc::new(cond), Rc::new(x), Rc::new(y)))
+        Ok(Expression::If(Box::new(cond), Box::new(x), Box::new(y)))
     }
 }
 
 fn list_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut xs = vec![];
     for pair in pairs {
-        xs.push(Rc::new(read_impl(single(pair))?));
+        xs.push(read_impl(single(pair))?);
     }
     Ok(Expression::List(xs))
 }
@@ -164,13 +163,14 @@ mod test {
             16, // Each collection is up to 16 elements long
             |atom| {
                 prop_oneof![
-                    (atom.clone(), atom.clone())
-                        .prop_map(|(key, value)| Expression::Define(Rc::new(key), Rc::new(value))),
+                    (atom.clone(), atom.clone()).prop_map(|(key, value)| Expression::Define(
+                        Box::new(key),
+                        Box::new(value)
+                    )),
                     (atom.clone(), atom.clone(), atom.clone()).prop_map(|(cond, x, y)| {
-                        Expression::If(Rc::new(cond), Rc::new(x), Rc::new(y))
+                        Expression::If(Box::new(cond), Box::new(x), Box::new(y))
                     }),
-                    prop::collection::vec(atom, 0..16)
-                        .prop_map(|xs| Expression::List(xs.into_iter().map(Rc::new).collect())),
+                    prop::collection::vec(atom, 0..16).prop_map(Expression::List),
                 ]
             },
         )

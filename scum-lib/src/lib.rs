@@ -1,6 +1,7 @@
 mod error;
 mod eval;
 mod expression;
+mod macros;
 mod print;
 mod read;
 

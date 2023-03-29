@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::boxed::Box;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Identifier(pub String);
@@ -15,7 +15,7 @@ pub enum Atom {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Constant(Atom),
-    Define(Rc<Expression>, Rc<Expression>),
-    If(Rc<Expression>, Rc<Expression>, Rc<Expression>),
-    List(Vec<Rc<Expression>>),
+    Define(Box<Expression>, Box<Expression>),
+    If(Box<Expression>, Box<Expression>, Box<Expression>),
+    List(Vec<Expression>),
 }
