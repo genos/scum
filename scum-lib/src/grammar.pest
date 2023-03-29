@@ -1,0 +1,38 @@
+// see https://groups.csail.mit.edu/mac/ftpdir/scheme-reports/r5rs-html/r5rs_9.html
+
+// identifier
+identifier = @{ initial ~ subsequent* | ( "+" | "-" ) }
+initial = @{ ASCII_ALPHA | "!" | "$" | "%" | "&" | "*" | "/" | ":" | "<" | "=" | ">" | "?" | "^" | "_" | "~" }
+subsequent = @{ initial | ASCII_DIGIT | "+" | "-" | "." | "@" }
+
+// atom
+bool = { "#t" | "#f" }
+// https://github.com/pest-parser/book/blob/master/src/examples/rust/literals.md
+// https://pest.rs/book/examples/json.html
+uint = _{ ASCII_DIGIT+ }
+exp = @{ ^"e" ~ ("+" | "-")? ~ uint }
+float = @{"-"? ~ (uint ~ "." ~ uint? ~ exp? | uint ~ exp)}
+int = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+// https://pest.rs/book/examples/json.html
+str = @{ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+symbol = { !(keyword) ~ identifier }
+atom = _{ bool | float | int | str | symbol }  // silent to remove a layer of indirection
+
+// expression
+keyword = { "define" | "if" | "lambda" }
+constant = { atom }
+define = { "(" ~ "define" ~ expression ~ expression ~ ")" }
+ifte = { "(if" ~ expression ~ expression ~ expression ~ ")" }
+list = { "(" ~ expression* ~ ")" }
+expression = { constant | define | ifte | list }
+
+// outermost & housekeeping
+input = _{ SOI ~ expression ~ EOI }
+COMMENT = _{ ";" ~ (!"\n" ~ ANY)* }
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
