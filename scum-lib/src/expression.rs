@@ -1,7 +1,8 @@
+use smol_str::SmolStr;
 use std::boxed::Box;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct Identifier(pub String);
+pub struct Identifier(pub SmolStr);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Atom {
