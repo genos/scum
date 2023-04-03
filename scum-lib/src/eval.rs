@@ -1,4 +1,5 @@
-use crate::expression::{Atom, Expression, Identifier};
+use crate::expression::{Atom, Expression, FunctionError, Identifier};
+use smol_str::SmolStr;
 use std::{cell::RefCell, collections::HashMap};
 
 #[derive(Debug, thiserror::Error)]
@@ -6,24 +7,37 @@ pub enum EvaluationError {
     #[error("Unknown identifier {0}")]
     NotFound(Identifier),
     #[error("Expected identifier, evaluation of {0} led to {1}")]
-    ExpectedIdentifier(String, String),
+    ExpectedIdentifier(Expression, Expression),
     #[error("Expected boolean, evaluation of {0} led to {1}")]
-    ExpectedBoolean(String, String),
+    ExpectedBoolean(Expression, Expression),
+    #[error("Expected a nonempty list")]
+    UnexpectedEmptyList,
+    #[error("Expected a function, but evaluation of {0} led to {1}")]
+    ExpectedFunction(Expression, Expression),
+    #[error("{0}")]
+    FunctionError(#[from] crate::expression::FunctionError),
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub(crate) struct Environment(RefCell<HashMap<Identifier, Expression>>);
 
-// impl Default for Environment {
-//     fn default() -> Self {
-//         Self(RefCell::new(HashMap::from([
-//             (ident!("+"), todo!()),
-//             (ident!("-"), todo!()),
-//             (ident!("*"), todo!()),
-//             (ident!("/"), todo!()),
-//         ])))
-//     }
-// }
+impl Default for Environment {
+    fn default() -> Self {
+        use crate::macros::{binary_op, comparison, equality, ident};
+        Self(RefCell::new(HashMap::from([
+            (ident!("="), equality!(==)),
+            (ident!("!="), equality!(!=)),
+            (ident!(">"), comparison!(>)),
+            (ident!("<"), comparison!(<)),
+            (ident!(">="), comparison!(>=)),
+            (ident!("<="), comparison!(<=)),
+            (ident!("+"), binary_op!(+)),
+            (ident!("-"), binary_op!(-)),
+            (ident!("*"), binary_op!(*)),
+            (ident!("/"), binary_op!(/)),
+        ])))
+    }
+}
 
 impl Environment {
     pub(crate) fn eval(&self, expression: Expression) -> Result<Expression, EvaluationError> {
@@ -54,12 +68,10 @@ impl Environment {
                     self.define(&i, yy.clone());
                     Ok(yy)
                 } else {
-                    Err(EvaluationError::ExpectedIdentifier(
-                        x.to_string(),
-                        xx.to_string(),
-                    ))
+                    Err(EvaluationError::ExpectedIdentifier(*x.clone(), xx.clone()))
                 }
             }
+            Expression::Function(_) => Ok(expression.clone()),
             Expression::If(ref cond, ref x, ref y) => {
                 let cond2 = if let Expression::Constant(Atom::Bool(_)) = **cond {
                     *cond.clone()
@@ -73,19 +85,23 @@ impl Environment {
                         self.eval_impl(y)
                     }
                 } else {
-                    Err(EvaluationError::ExpectedBoolean(
-                        cond.to_string(),
-                        cond2.to_string(),
-                    ))
+                    Err(EvaluationError::ExpectedBoolean(*cond.clone(), cond2))
                 }
             }
             Expression::List(xs) => {
-                let mut ys = vec![];
-                for x in xs {
-                    let y = self.eval_impl(x)?;
-                    ys.push(y);
+                let (hd, tl) = xs
+                    .split_first()
+                    .ok_or(EvaluationError::UnexpectedEmptyList)?;
+                match self.eval_impl(hd)? {
+                    Expression::Function(f) => {
+                        let mut ys = vec![];
+                        for y in tl {
+                            ys.push(self.eval_impl(y)?);
+                        }
+                        f(ys).map_err(Into::into)
+                    }
+                    e => Err(EvaluationError::ExpectedFunction(hd.clone(), e)),
                 }
-                Ok(Expression::List(ys))
             }
         }
     }
