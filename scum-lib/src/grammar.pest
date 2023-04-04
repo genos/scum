@@ -9,9 +9,8 @@ subsequent = @{ initial | ASCII_DIGIT | "+" | "-" | "." | "@" }
 bool = { "#t" | "#f" }
 // https://github.com/pest-parser/book/blob/master/src/examples/rust/literals.md
 // https://pest.rs/book/examples/json.html
-uint = _{ ASCII_DIGIT+ }
-exp = @{ ^"e" ~ ("+" | "-")? ~ uint }
-float = @{"-"? ~ (uint ~ "." ~ uint? ~ exp? | uint ~ exp)}
+exp = @{ ^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+ }
+float = @{"-"? ~ (ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+? ~ exp? | ASCII_DIGIT+ ~ exp)}
 int = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
 // https://pest.rs/book/examples/json.html
 str = @{ "\"" ~ inner ~ "\"" }

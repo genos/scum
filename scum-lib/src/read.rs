@@ -4,7 +4,6 @@ use pest::{
     Parser,
 };
 use pest_derive::Parser;
-use smol_str::SmolStr;
 use std::boxed::Box;
 
 #[derive(Debug, thiserror::Error)]
@@ -95,7 +94,7 @@ fn constant_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
             ))),
             Rule::str => Ok(Expression::Constant(Atom::Str(pair.as_str().to_string()))),
             Rule::symbol => Ok(Expression::Constant(Atom::Symbol(Identifier(
-                SmolStr::new(pair.as_str()),
+                pair.as_str().to_string(),
             )))),
             r => Err(ReadingError::CompoundInAtom(r)),
         }
@@ -143,8 +142,7 @@ mod test {
     use proptest::prelude::*;
     fn arb_identifier() -> impl Strategy<Value = Identifier> {
         // should match the identifier rule in grammar.pest
-        r"([a-zA-Z!%&*/:<=>?^_~][a-zA-Z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]"
-            .prop_map(|s| Identifier(SmolStr::new(&s)))
+        r"([a-zA-Z!%&*/:<=>?^_~][a-zA-Z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
     }
 
     fn arb_atom() -> impl Strategy<Value = Atom> {
