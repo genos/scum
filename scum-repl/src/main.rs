@@ -1,3 +1,4 @@
+#![deny(unsafe_code)]
 use rustyline::{error::ReadlineError, Config, EditMode, Editor};
 use scum_lib::Scum;
 
@@ -22,10 +23,10 @@ fn main() -> Result<(), ReadlineError> {
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                println!("CTRL-C");
+                //
             }
             Err(ReadlineError::Eof) => {
-                println!("CTRL-D");
+                eprintln!("Bye!");
                 break;
             }
             Err(err) => {

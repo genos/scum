@@ -1,6 +1,6 @@
 macro_rules! ident {
     ($s:literal) => {
-        Identifier(SmolStr::new($s))
+        Identifier($s.to_string())
     };
 }
 
@@ -19,7 +19,7 @@ macro_rules! equality {
                 (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
                 _ => Err(FunctionError::TypeMismatch(x.clone(), y.clone()))
             },
-            _ => Err(FunctionError::NotTwoArgs(xs.len()).into()),
+            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
         })
     };
 }
@@ -36,7 +36,7 @@ macro_rules! comparison {
                 (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool((*a as f64) $op *b))),
                 _ => Err(FunctionError::NonNumericArgs(x.clone(), y.clone()))
             },
-            _ => Err(FunctionError::NotTwoArgs(xs.len()).into()),
+            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
         })
     };
 }
@@ -54,7 +54,7 @@ macro_rules! binary_op {
                 _ => Err(FunctionError::NonNumericArgs(x.clone(), y.clone()))
 
             }
-            _ => Err(FunctionError::NotTwoArgs(xs.len()).into()),
+            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
         })
     };
 }
