@@ -27,9 +27,10 @@ atom = _{ bool | float | int | str | symbol }  // silent to remove a layer of in
 keyword = { "define" | "if" | "lambda" }
 constant = { atom }
 define = { "(" ~ "define" ~ expression ~ expression ~ ")" }
-ifte = { "(if" ~ expression ~ expression ~ expression ~ ")" }
+ifte = { "(" ~ "if" ~ expression ~ expression ~ expression ~ ")" }
+lambda = { "(" ~ "lambda" ~ expression ~ expression ~ ")" }
 list = { "(" ~ expression* ~ ")" }
-expression = { constant | define | ifte | list }
+expression = { constant | define | ifte | lambda | list }
 
 // outermost & housekeeping
 input = _{ SOI ~ expression ~ EOI }
