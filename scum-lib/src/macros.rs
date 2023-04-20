@@ -17,7 +17,7 @@ macro_rules! equality {
                 (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a as f64 $op *b))),
                 (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
                 (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                _ => Err(FunctionError::TypeMismatch(x.clone(), y.clone()))
+                _ => Ok(Expression::Constant(Atom::Bool(false)))
             },
             _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
         })

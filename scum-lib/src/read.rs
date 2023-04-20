@@ -12,9 +12,9 @@ pub enum ReadingError {
     Empty,
     #[error("Expected to parse into two pairs, got only one")]
     TooShort,
-    #[error("Invalid read: expected one expression, got {0}")]
+    #[error("Invalid read: expected one expression, got {0} instead.")]
     Invalid(usize),
-    #[error("Expected an expression to parse, but got {0:?}")]
+    #[error("Expected an expression to parse, but got {0:?} instead.")]
     UnexpectedRule(Rule),
     #[error("Unable to parse float: {0:#?}")]
     ParsingFloat(#[from] std::num::ParseFloatError),
@@ -22,18 +22,38 @@ pub enum ReadingError {
     ParsingInt(#[from] std::num::ParseIntError),
     #[error("Unexpected compound rule in atomic statement: {0:?}")]
     CompoundInAtom(Rule),
-    #[error("Unable to parse atom: expeted 1 expression, found {0}")]
-    BadAtom(usize),
-    #[error("Unable to parse define: expected 2 expressions, found {0}")]
-    BadDefine(usize),
-    #[error("Unable to parse if statment: expected 3 expressions, found {0}")]
-    BadIf(usize),
+    #[error(
+        "Unable to parse {rule} rule: expected {expected_num} expression{plural}, found {found_num}"
+    )]
+    BadParse {
+        rule: String,
+        expected_num: usize,
+        plural: String,
+        found_num: usize,
+    },
     #[error("Reading error: {location:?}, {line_col:?} {line}")]
     Other {
         location: pest::error::InputLocation,
         line_col: pest::error::LineColLocation,
         line: String,
     },
+}
+
+fn bad_parse(
+    rule: &str,
+    expected_num: usize,
+    found_num: usize,
+) -> Result<Expression, ReadingError> {
+    Err(ReadingError::BadParse {
+        rule: rule.to_string(),
+        expected_num,
+        plural: if expected_num > 1 {
+            "s".to_string()
+        } else {
+            "".to_string()
+        },
+        found_num,
+    })
 }
 
 impl From<pest::error::Error<Rule>> for ReadingError {
@@ -67,6 +87,7 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
             Rule::constant => xs.push(constant_to_expr(x.into_inner())?),
             Rule::define => xs.push(define_to_expr(x.into_inner())?),
             Rule::ifte => xs.push(ifte_to_expr(x.into_inner())?),
+            Rule::lambda => xs.push(lambda_to_expr(x.into_inner())?),
             Rule::list => xs.push(list_to_expr(x.into_inner())?),
             r => return Err(ReadingError::UnexpectedRule(r)),
         }
@@ -81,7 +102,7 @@ fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
 fn constant_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 1 {
-        Err(ReadingError::BadAtom(pieces.len()))
+        bad_parse("atom", 1, pieces.len())
     } else {
         let pair = pieces.remove(0);
         match pair.as_rule() {
@@ -104,7 +125,7 @@ fn constant_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
 fn define_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 2 {
-        Err(ReadingError::BadDefine(pieces.len()))
+        bad_parse("define", 2, pieces.len())
     } else {
         let key = read_impl(single(pieces.remove(0)))?;
         let value = read_impl(single(pieces.remove(0)))?;
@@ -115,12 +136,23 @@ fn define_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
 fn ifte_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 3 {
-        Err(ReadingError::BadIf(pieces.len()))
+        bad_parse("if", 3, pieces.len())
     } else {
         let cond = read_impl(single(pieces.remove(0)))?;
         let x = read_impl(single(pieces.remove(0)))?;
         let y = read_impl(single(pieces.remove(0)))?;
         Ok(Expression::If(Box::new(cond), Box::new(x), Box::new(y)))
+    }
+}
+
+fn lambda_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+    let mut pieces = pairs.collect::<Vec<_>>();
+    if pieces.len() != 2 {
+        bad_parse("lambda", 2, pieces.len())
+    } else {
+        let args = read_impl(single(pieces.remove(0)))?;
+        let body = read_impl(single(pieces.remove(0)))?;
+        Ok(Expression::Lambda(Box::new(args), Box::new(body)))
     }
 }
 
@@ -145,13 +177,21 @@ mod test {
         r"([a-zA-Z!%&*/:<=>?^_~][a-zA-Z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
     }
 
+    fn arb_bool() -> impl Strategy<Value = Atom> {
+        any::<bool>().prop_map(Atom::Bool)
+    }
+
+    fn arb_symbol() -> impl Strategy<Value = Atom> {
+        arb_identifier().prop_map(Atom::Symbol)
+    }
+
     fn arb_atom() -> impl Strategy<Value = Atom> {
         prop_oneof![
-            any::<bool>().prop_map(Atom::Bool),
+            arb_bool(),
             any::<f64>().prop_map(Atom::Float),
             any::<i64>().prop_map(Atom::Int),
             r#""[\w\s\d\u{7f}]*""#.prop_map(Atom::Str),
-            arb_identifier().prop_map(Atom::Symbol),
+            arb_symbol(),
         ]
     }
 
@@ -163,13 +203,27 @@ mod test {
             16, // Each collection is up to 16 elements long
             |atom| {
                 prop_oneof![
-                    (atom.clone(), atom.clone()).prop_map(|(key, value)| Expression::Define(
-                        Box::new(key),
+                    (arb_symbol(), atom.clone()).prop_map(|(key, value)| Expression::Define(
+                        Box::new(Expression::Constant(key)),
                         Box::new(value)
                     )),
-                    (atom.clone(), atom.clone(), atom.clone()).prop_map(|(cond, x, y)| {
-                        Expression::If(Box::new(cond), Box::new(x), Box::new(y))
+                    (arb_bool(), atom.clone(), atom.clone()).prop_map(|(cond, x, y)| {
+                        Expression::If(
+                            Box::new(Expression::Constant(cond)),
+                            Box::new(x),
+                            Box::new(y),
+                        )
                     }),
+                    (prop::collection::vec(arb_symbol(), 0..16), atom.clone()).prop_map(
+                        |(args, body)| {
+                            Expression::Lambda(
+                                Box::new(Expression::List(
+                                    args.into_iter().map(Expression::Constant).collect(),
+                                )),
+                                Box::new(body),
+                            )
+                        }
+                    ),
                     prop::collection::vec(atom, 0..16).prop_map(Expression::List),
                 ]
             },

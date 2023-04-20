@@ -1,5 +1,3 @@
-use std::boxed::Box;
-
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Identifier(pub String);
 
@@ -18,6 +16,7 @@ pub enum Expression {
     Define(Box<Expression>, Box<Expression>),
     If(Box<Expression>, Box<Expression>, Box<Expression>),
     Function(fn(Vec<Expression>) -> Result<Expression, FunctionError>),
+    Lambda(Box<Expression>, Box<Expression>),
     List(Vec<Expression>),
 }
 

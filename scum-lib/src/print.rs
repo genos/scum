@@ -36,6 +36,7 @@ impl fmt::Display for Expression {
             Expression::Define(id, x) => write!(f, "(define {id} {x})"),
             Expression::If(cond, x, y) => write!(f, "(if {cond} {x} {y})"),
             Expression::Function(g) => write!(f, "#<function {g:p}>"),
+            Expression::Lambda(args, body) => write!(f, "(lambda {args} {body})"),
             Expression::List(xs) => _paren(xs, f),
         }
     }
