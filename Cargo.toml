@@ -2,5 +2,7 @@
 members = ["scum-lib", "scum-repl"]
 
 [profile.release]
+codegen-units = 1
 lto = true
 panic = "abort"
+strip = true
