@@ -20,11 +20,10 @@ char = {
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
-symbol = { !(keyword) ~ identifier }
+symbol = { identifier }
 atom = _{ bool | float | int | str | symbol }  // silent to remove a layer of indirection
 
 // expression
-keyword = { "define" | "if" | "lambda" }
 constant = { atom }
 define = { "(" ~ "define" ~ expression ~ expression ~ ")" }
 ifte = { "(" ~ "if" ~ expression ~ expression ~ expression ~ ")" }

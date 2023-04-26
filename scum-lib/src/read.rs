@@ -4,7 +4,6 @@ use pest::{
     Parser,
 };
 use pest_derive::Parser;
-use std::boxed::Box;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
