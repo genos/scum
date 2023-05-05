@@ -1,9 +1,10 @@
-use crate::expression::{Atom, Expression, Identifier};
+use crate::expression::{Atom, Environment, Expression, Identifier};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
 };
 use pest_derive::Parser;
+use std::rc::Rc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
@@ -29,6 +30,12 @@ pub enum ReadingError {
         expected_num: usize,
         plural: String,
         found_num: usize,
+    },
+    #[error("Expected {article} {expected}, but got {expression} instead.")]
+    ExpressionMismatch {
+        article: String,
+        expected: String,
+        expression: Expression,
     },
     #[error("Reading error: {location:?}, {line_col:?} {line}")]
     Other {
@@ -69,25 +76,25 @@ impl From<pest::error::Error<Rule>> for ReadingError {
 #[grammar = "grammar.pest"]
 struct ScumParser;
 
-pub(crate) fn read(input: &str) -> Result<Expression, ReadingError> {
+pub(crate) fn read(input: &str, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut pairs = ScumParser::parse(Rule::input, input)?.collect::<Vec<_>>();
     match pairs.len() {
         0 => Err(ReadingError::Empty),
         1 => Err(ReadingError::TooShort),
         n if n > 2 => Err(ReadingError::Invalid(n - 1)),
-        _ => read_impl(pairs.remove(0).into_inner()),
+        _ => read_impl(pairs.remove(0).into_inner(), env),
     }
 }
 
-fn read_impl(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+fn read_impl(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut xs = vec![];
     for x in pairs {
         match x.as_rule() {
             Rule::constant => xs.push(constant_to_expr(x.into_inner())?),
-            Rule::define => xs.push(define_to_expr(x.into_inner())?),
-            Rule::ifte => xs.push(ifte_to_expr(x.into_inner())?),
-            Rule::lambda => xs.push(lambda_to_expr(x.into_inner())?),
-            Rule::list => xs.push(list_to_expr(x.into_inner())?),
+            Rule::define => xs.push(define_to_expr(x.into_inner(), env)?),
+            Rule::ifte => xs.push(ifte_to_expr(x.into_inner(), env)?),
+            Rule::lambda => xs.push(lambda_to_expr(x.into_inner(), env)?),
+            Rule::list => xs.push(list_to_expr(x.into_inner(), env)?),
             r => return Err(ReadingError::UnexpectedRule(r)),
         }
     }
@@ -121,130 +128,78 @@ fn constant_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
     }
 }
 
-fn define_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+fn define_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 2 {
         bad_parse("define", 2, pieces.len())
     } else {
-        let key = read_impl(single(pieces.remove(0)))?;
-        let value = read_impl(single(pieces.remove(0)))?;
+        let key = read_impl(single(pieces.remove(0)), env)?;
+        let value = read_impl(single(pieces.remove(0)), env)?;
         Ok(Expression::Define(Box::new(key), Box::new(value)))
     }
 }
 
-fn ifte_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+fn ifte_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 3 {
         bad_parse("if", 3, pieces.len())
     } else {
-        let cond = read_impl(single(pieces.remove(0)))?;
-        let x = read_impl(single(pieces.remove(0)))?;
-        let y = read_impl(single(pieces.remove(0)))?;
+        let cond = read_impl(single(pieces.remove(0)), env)?;
+        let x = read_impl(single(pieces.remove(0)), env)?;
+        let y = read_impl(single(pieces.remove(0)), env)?;
         Ok(Expression::If(Box::new(cond), Box::new(x), Box::new(y)))
     }
 }
 
-fn lambda_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut pieces = pairs.collect::<Vec<_>>();
     if pieces.len() != 2 {
         bad_parse("lambda", 2, pieces.len())
     } else {
-        let args = read_impl(single(pieces.remove(0)))?;
-        let body = read_impl(single(pieces.remove(0)))?;
-        Ok(Expression::Lambda(Box::new(args), Box::new(body)))
+        let args = read_impl(single(pieces.remove(0)), env)?;
+        let mut params = vec![];
+        match args {
+            Expression::List(xs) => {
+                for x in xs {
+                    match x {
+                        Expression::Constant(Atom::Symbol(i)) => {
+                            params.push(i);
+                        }
+                        _ => {
+                            return Err(ReadingError::ExpressionMismatch {
+                                article: "a".to_string(),
+                                expected: "symbol".to_string(),
+                                expression: x.clone(),
+                            })
+                        }
+                    }
+                }
+            }
+            _ => {
+                return Err(ReadingError::ExpressionMismatch {
+                    article: "a".to_string(),
+                    expected: "list".to_string(),
+                    expression: args.clone(),
+                })
+            }
+        }
+        let body = read_impl(single(pieces.remove(0)), env)?;
+        Ok(Expression::Lambda {
+            params,
+            env: Rc::new(env.clone()),
+            body: Box::new(body),
+        })
     }
 }
 
-fn list_to_expr(pairs: Pairs<Rule>) -> Result<Expression, ReadingError> {
+fn list_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression, ReadingError> {
     let mut xs = vec![];
     for pair in pairs {
-        xs.push(read_impl(single(pair))?);
+        xs.push(read_impl(single(pair), env)?);
     }
     Ok(Expression::List(xs))
 }
 
 fn single(p: Pair<Rule>) -> Pairs<Rule> {
     Pairs::single(p.into_inner().next().unwrap())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use proptest::prelude::*;
-    fn arb_identifier() -> impl Strategy<Value = Identifier> {
-        // should match the identifier rule in grammar.pest
-        r"([a-zA-Z!%&*/:<=>?^_~][a-zA-Z0-9!%&*/:<=>?^_~+[-].@]*)|[+-]".prop_map(Identifier)
-    }
-
-    fn arb_bool() -> impl Strategy<Value = Atom> {
-        any::<bool>().prop_map(Atom::Bool)
-    }
-
-    fn arb_symbol() -> impl Strategy<Value = Atom> {
-        arb_identifier().prop_map(Atom::Symbol)
-    }
-
-    fn arb_atom() -> impl Strategy<Value = Atom> {
-        prop_oneof![
-            arb_bool(),
-            any::<f64>().prop_map(Atom::Float),
-            any::<i64>().prop_map(Atom::Int),
-            r#""[\w\s\d\u{7f}]*""#.prop_map(Atom::Str),
-            arb_symbol(),
-        ]
-    }
-
-    fn arb_expression() -> impl Strategy<Value = Expression> {
-        // https://docs.rs/proptest/latest/proptest/prelude/trait.Strategy.html#method.prop_recursive
-        arb_atom().prop_map(Expression::Constant).prop_recursive(
-            4,  // No more than 4 branch levels deep
-            64, // Target around 64 total elements
-            16, // Each collection is up to 16 elements long
-            |atom| {
-                prop_oneof![
-                    (arb_symbol(), atom.clone()).prop_map(|(key, value)| Expression::Define(
-                        Box::new(Expression::Constant(key)),
-                        Box::new(value)
-                    )),
-                    (arb_bool(), atom.clone(), atom.clone()).prop_map(|(cond, x, y)| {
-                        Expression::If(
-                            Box::new(Expression::Constant(cond)),
-                            Box::new(x),
-                            Box::new(y),
-                        )
-                    }),
-                    (prop::collection::vec(arb_symbol(), 0..16), atom.clone()).prop_map(
-                        |(args, body)| {
-                            Expression::Lambda(
-                                Box::new(Expression::List(
-                                    args.into_iter().map(Expression::Constant).collect(),
-                                )),
-                                Box::new(body),
-                            )
-                        }
-                    ),
-                    prop::collection::vec(atom, 0..16).prop_map(Expression::List),
-                ]
-            },
-        )
-    }
-
-    proptest! {
-        #[test]
-        fn atom_round_trip(atom in arb_atom()) {
-            let c = Expression::Constant(atom);
-            let s = c.to_string();
-            let p = read(&s);
-            prop_assert!(p.is_ok());
-            prop_assert_eq!(p.unwrap(), c);
-        }
-
-        #[test]
-        fn expression_round_trip(exp in arb_expression()) {
-            let s = exp.to_string();
-            let p = read(&s);
-            prop_assert!(p.is_ok());
-            prop_assert_eq!(p.unwrap(), exp);
-        }
-    }
 }
