@@ -4,7 +4,7 @@ use scum_lib::Scum;
 
 fn main() -> Result<(), ReadlineError> {
     let config = Config::builder().edit_mode(EditMode::Vi).build();
-    let scum = Scum::default();
+    let mut scum = Scum::default();
     let mut rl: Editor<(), _> = Editor::with_config(config)?;
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");

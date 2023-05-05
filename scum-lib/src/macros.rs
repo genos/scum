@@ -1,6 +1,6 @@
 macro_rules! ident {
     ($s:literal) => {
-        Identifier($s.to_string())
+        crate::expression::Identifier($s.to_string())
     };
 }
 
@@ -8,18 +8,18 @@ pub(crate) use ident;
 
 macro_rules! equality {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        crate::expression::Expression::Function(|xs: Vec<crate::expression::Expression>| match &xs[..] {
             [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a as f64 $op *b))),
-                (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                _ => Ok(Expression::Constant(Atom::Bool(false)))
+                (crate::expression::Expression::Constant(crate::expression::Atom::Bool(a)), crate::expression::Expression::Constant(crate::expression::Atom::Bool(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b as f64))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a as f64 $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Str(a)), crate::expression::Expression::Constant(crate::expression::Atom::Str(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Symbol(a)), crate::expression::Expression::Constant(crate::expression::Atom::Symbol(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                _ => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(false)))
             },
-            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
+            _ => Err(crate::expression::EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
         })
     };
 }
@@ -28,15 +28,15 @@ pub(crate) use equality;
 
 macro_rules! comparison {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        crate::expression::Expression::Function(|xs: Vec<crate::expression::Expression>| match &xs[..] {
             [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool((*a as f64) $op *b))),
-                _ => Err(FunctionError::NonNumericArgs(x.clone(), y.clone()))
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b as f64))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Bool((*a as f64) $op *b))),
+                _ => Err(crate::expression::EnvError::NonNumericArgs(x.clone(), y.clone()))
             },
-            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
+            _ => Err(crate::expression::EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
         })
     };
 }
@@ -45,16 +45,16 @@ pub(crate) use comparison;
 
 macro_rules! binary_op {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        crate::expression::Expression::Function(|xs: Vec<crate::expression::Expression>| match &xs[..] {
             [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Int(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Float((*a as f64) $op *b))),
-                _ => Err(FunctionError::NonNumericArgs(x.clone(), y.clone()))
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Float(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Float(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Float(*a $op *b as f64))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Int(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Int(*a $op *b))),
+                (crate::expression::Expression::Constant(crate::expression::Atom::Int(a)), crate::expression::Expression::Constant(crate::expression::Atom::Float(b))) => Ok(crate::expression::Expression::Constant(crate::expression::Atom::Float((*a as f64) $op *b))),
+                _ => Err(crate::expression::EnvError::NonNumericArgs(x.clone(), y.clone()))
 
             }
-            _ => Err(FunctionError::WrongNumberOfArgs(2, xs.len()).into()),
+            _ => Err(crate::expression::EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
         })
     };
 }

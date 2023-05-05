@@ -23,7 +23,7 @@ fn _paren<T: fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
     let mut sep = "";
     write!(f, "(")?;
     for x in xs {
-        write!(f, "{}{}", sep, x)?;
+        write!(f, "{sep}{x}")?;
         sep = " ";
     }
     write!(f, ")")
@@ -33,10 +33,18 @@ impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Expression::Constant(x) => write!(f, "{x}"),
-            Expression::Define(id, x) => write!(f, "(define {id} {x})"),
-            Expression::If(cond, x, y) => write!(f, "(if {cond} {x} {y})"),
+            Expression::Define { name, value } => write!(f, "(define {name} {value})"),
+            Expression::If {
+                cond,
+                if_true,
+                if_false,
+            } => write!(f, "(if {cond} {if_true} {if_false})"),
             Expression::Function(g) => write!(f, "#<function {g:p}>"),
-            Expression::Lambda(args, body) => write!(f, "(lambda {args} {body})"),
+            Expression::Lambda { params, body, .. } => {
+                write!(f, "(lambda ")?;
+                _paren(params, f)?;
+                write!(f, " {body})")
+            }
             Expression::List(xs) => _paren(xs, f),
         }
     }
