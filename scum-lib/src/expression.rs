@@ -15,8 +15,15 @@ pub enum Atom {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Constant(Atom),
-    Define(Box<Expression>, Box<Expression>),
-    If(Box<Expression>, Box<Expression>, Box<Expression>),
+    Define {
+        name: Box<Expression>,
+        value: Box<Expression>,
+    },
+    If {
+        cond: Box<Expression>,
+        if_true: Box<Expression>,
+        if_false: Box<Expression>,
+    },
     Function(fn(Vec<Expression>) -> Result<Expression, EnvError>),
     Lambda {
         params: Vec<Identifier>,
@@ -28,10 +35,8 @@ pub enum Expression {
 
 #[derive(Debug, thiserror::Error)]
 pub enum EnvError {
-    #[error("Expected {0} arguments, received {1}")]
-    WrongNumberOfArgs(usize, usize),
-    #[error("Expected two args with the same type, received {0} and {1}")]
-    TypeMismatch(Expression, Expression),
+    #[error("Expected {expected} arguments, received {actual}")]
+    WrongNumberOfArgs { expected: usize, actual: usize },
     #[error("Expected two numeric args, received {0} and {1}")]
     NonNumericArgs(Expression, Expression),
     #[error("Unknown identifier {0}")]
@@ -66,10 +71,10 @@ impl Default for Environment {
 }
 
 impl Environment {
-    pub(crate) fn new(outer: Option<Environment>) -> Environment {
+    pub(crate) fn new(outer: Option<Rc<Environment>>) -> Environment {
         Self {
             bindings: Default::default(),
-            outer: outer.map(Rc::new),
+            outer,
         }
     }
 

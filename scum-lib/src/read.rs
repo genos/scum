@@ -133,9 +133,12 @@ fn define_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
     if pieces.len() != 2 {
         bad_parse("define", 2, pieces.len())
     } else {
-        let key = read_impl(single(pieces.remove(0)), env)?;
+        let name = read_impl(single(pieces.remove(0)), env)?;
         let value = read_impl(single(pieces.remove(0)), env)?;
-        Ok(Expression::Define(Box::new(key), Box::new(value)))
+        Ok(Expression::Define {
+            name: Box::new(name),
+            value: Box::new(value),
+        })
     }
 }
 
@@ -145,9 +148,13 @@ fn ifte_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression,
         bad_parse("if", 3, pieces.len())
     } else {
         let cond = read_impl(single(pieces.remove(0)), env)?;
-        let x = read_impl(single(pieces.remove(0)), env)?;
-        let y = read_impl(single(pieces.remove(0)), env)?;
-        Ok(Expression::If(Box::new(cond), Box::new(x), Box::new(y)))
+        let if_true = read_impl(single(pieces.remove(0)), env)?;
+        let if_false = read_impl(single(pieces.remove(0)), env)?;
+        Ok(Expression::If {
+            cond: Box::new(cond),
+            if_true: Box::new(if_true),
+            if_false: Box::new(if_false),
+        })
     }
 }
 
@@ -186,7 +193,7 @@ fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
         let body = read_impl(single(pieces.remove(0)), env)?;
         Ok(Expression::Lambda {
             params,
-            env: Rc::new(env.clone()),
+            env: Rc::new(Environment::new(Some(Rc::new(env.clone())))),
             body: Box::new(body),
         })
     }
