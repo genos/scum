@@ -21,3 +21,19 @@ impl Scum {
             .map(|expression| expression.to_string())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn nested_lambda() {
+        let mut scum = Scum::default();
+        let one = scum.read_eval_string("(define scale-by (lambda (s) (lambda (x) (* s x))))");
+        assert!(one.is_ok());
+        let two = scum.read_eval_string("(define double (scale-by 2))");
+        assert!(two.is_ok());
+        let result = scum.read_eval_string("(double 3)");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "6");
+    }
+}
