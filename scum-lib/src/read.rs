@@ -193,7 +193,7 @@ fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
         let body = read_impl(single(pieces.remove(0)), env)?;
         Ok(Expression::Lambda {
             params,
-            env: Rc::new(Environment::new(Some(Rc::new(env.clone())))),
+            env: Rc::new(env.clone()),
             body: Box::new(body),
         })
     }
