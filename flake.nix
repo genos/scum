@@ -25,32 +25,26 @@
     nixpkgs,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
+      overlays = [import rust-overlay];
       pkgs = import nixpkgs {
-        inherit system;
-        overlays = [rust-overlay.overlays.default];
+        inherit system overlays;
       };
-      naersk' = pkgs.callPackage naersk {};
-      buildInputs =
-        []
-        ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-          pkgs.libiconv
-        ];
+      rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+      nativeBuildInputs = [rustToolchain] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [pkgs.libiconv];
       buildPackage = pname:
-        naersk'.buildPackage {
-          inherit buildInputs pname;
+        (pkgs.callPackage naersk {}).buildPackage {
+          inherit nativeBuildInputs pname;
           src = ./.;
         };
-      scum-lib = buildPackage "scum-lib";
-      scum-repl = buildPackage "scum-repl";
     in {
       formatter = pkgs.alejandra;
-      packages = {
-        inherit scum-lib scum-repl;
+      packages = rec {
+        scum-lib = buildPackage "scum-lib";
+        scum-repl = buildPackage "scum-repl";
         default = scum-repl;
       };
       devShells.default = pkgs.mkShell {
-        nativeBuildInputs = [pkgs.rustc pkgs.cargo];
-        inherit buildInputs;
+        inherit nativeBuildInputs;
       };
     });
 }
