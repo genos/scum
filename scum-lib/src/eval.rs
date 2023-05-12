@@ -1,4 +1,4 @@
-use crate::expression::{Atom, EnvError, Environment, Expression};
+use crate::expression::{Atom, Define, EnvError, Environment, Expression, If, Lambda};
 use std::rc::Rc;
 
 #[derive(Debug, thiserror::Error)]
@@ -21,11 +21,15 @@ pub(crate) fn eval(
     match expression {
         Expression::Constant(Atom::Symbol(s)) => environment.lookup(s).map_err(Into::into),
         Expression::Constant(_) => Ok(expression.clone()),
-        Expression::Define { name, value } => {
-            let x = if let Expression::Constant(Atom::Symbol(_)) = **name {
-                *name.clone()
+        Expression::Define(d) => {
+            let Define {
+                ref name,
+                ref value,
+            } = **d;
+            let x = if let Expression::Constant(Atom::Symbol(_)) = name {
+                name.clone()
             } else {
-                eval(name, environment)?
+                eval(&name, environment)?
             };
             if let Expression::Constant(Atom::Symbol(i)) = x {
                 let y = eval(value, environment)?;
@@ -35,19 +39,20 @@ pub(crate) fn eval(
                 Err(EvaluationError::TypeMismatch {
                     article: "an".to_string(),
                     expected_type: "identifier".to_string(),
-                    input: *name.clone(),
+                    input: name.clone(),
                     output: x.clone(),
                 })
             }
         }
         Expression::Function(_) => Ok(expression.clone()),
-        Expression::If {
-            cond,
-            if_true,
-            if_false,
-        } => {
-            let cond2 = if let Expression::Constant(Atom::Bool(_)) = **cond {
-                *cond.clone()
+        Expression::If(i) => {
+            let If {
+                ref cond,
+                ref if_true,
+                ref if_false,
+            } = **i;
+            let cond2 = if let Expression::Constant(Atom::Bool(_)) = cond {
+                cond.clone()
             } else {
                 eval(cond, environment)?
             };
@@ -61,16 +66,23 @@ pub(crate) fn eval(
                 Err(EvaluationError::TypeMismatch {
                     article: "a".to_string(),
                     expected_type: "bool".to_string(),
-                    input: *cond.clone(),
+                    input: cond.clone(),
                     output: cond2,
                 })
             }
         }
-        Expression::Lambda { params, body, .. } => Ok(Expression::Lambda {
-            params: params.clone(),
-            env: Environment::new(Some(Rc::new(environment.clone()))).into(),
-            body: body.clone(),
-        }),
+        Expression::Lambda(l) => {
+            let Lambda {
+                ref params,
+                ref body,
+                ..
+            } = **l;
+            Ok(Expression::Lambda(Rc::new(Lambda {
+                params: params.clone(),
+                env: Environment::new(Some(Rc::new(environment.clone()))).into(),
+                body: body.clone(),
+            })))
+        }
         Expression::List(xs) => {
             if xs.is_empty() {
                 Ok(expression.clone())
@@ -84,7 +96,12 @@ pub(crate) fn eval(
                         }
                         f(ys).map_err(Into::into)
                     }
-                    Expression::Lambda { params, env, body } => {
+                    Expression::Lambda(l) => {
+                        let Lambda {
+                            ref params,
+                            ref env,
+                            ref body,
+                        } = *l;
                         if params.len() != tl.len() {
                             Err(EnvError::WrongNumberOfArgs {
                                 expected: params.len(),
@@ -92,7 +109,7 @@ pub(crate) fn eval(
                             }
                             .into())
                         } else {
-                            let mut local = Environment::new(Some(env));
+                            let mut local = Environment::new(Some(env.clone()));
                             for (p, t) in params.iter().zip(tl) {
                                 local.define(p, &eval(t, environment)?);
                             }
