@@ -30,10 +30,15 @@ mod test {
         let mut scum = Scum::default();
         let one = scum.read_eval_string("(define scale-by (lambda (s) (lambda (x) (* s x))))");
         assert!(one.is_ok());
-        let two = scum.read_eval_string("(define double (scale-by 2))");
-        assert!(two.is_ok());
-        let result = scum.read_eval_string("(double 3)");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "6");
+        let double = scum.read_eval_string("(define double (scale-by 2))");
+        assert!(double.is_ok());
+        let triple = scum.read_eval_string("(define triple (scale-by 3))");
+        assert!(triple.is_ok());
+        let double_result = scum.read_eval_string("(double 3)");
+        assert!(double_result.is_ok());
+        assert_eq!(double_result.unwrap(), "6");
+        let triple_result = scum.read_eval_string("(triple 3)");
+        assert!(triple_result.is_ok());
+        assert_eq!(triple_result.unwrap(), "9");
     }
 }
