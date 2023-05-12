@@ -1,4 +1,4 @@
-use crate::expression::{Atom, Environment, Expression, Identifier};
+use crate::expression::{Atom, Define, Environment, Expression, Identifier, If, Lambda};
 use pest::{
     iterators::{Pair, Pairs},
     Parser,
@@ -135,10 +135,10 @@ fn define_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
     } else {
         let name = read_impl(single(pieces.remove(0)), env)?;
         let value = read_impl(single(pieces.remove(0)), env)?;
-        Ok(Expression::Define {
-            name: Box::new(name),
-            value: Box::new(value),
-        })
+        Ok(Expression::Define(Rc::new(Define {
+            name: name,
+            value: value,
+        })))
     }
 }
 
@@ -150,11 +150,11 @@ fn ifte_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expression,
         let cond = read_impl(single(pieces.remove(0)), env)?;
         let if_true = read_impl(single(pieces.remove(0)), env)?;
         let if_false = read_impl(single(pieces.remove(0)), env)?;
-        Ok(Expression::If {
-            cond: Box::new(cond),
-            if_true: Box::new(if_true),
-            if_false: Box::new(if_false),
-        })
+        Ok(Expression::If(Rc::new(If {
+            cond: cond,
+            if_true: if_true,
+            if_false: if_false,
+        })))
     }
 }
 
@@ -191,11 +191,11 @@ fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
             }
         }
         let body = read_impl(single(pieces.remove(0)), env)?;
-        Ok(Expression::Lambda {
+        Ok(Expression::Lambda(Rc::new(Lambda {
             params,
             env: Rc::new(env.clone()),
-            body: Box::new(body),
-        })
+            body: body,
+        })))
     }
 }
 

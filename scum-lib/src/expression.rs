@@ -15,22 +15,31 @@ pub enum Atom {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Constant(Atom),
-    Define {
-        name: Box<Expression>,
-        value: Box<Expression>,
-    },
-    If {
-        cond: Box<Expression>,
-        if_true: Box<Expression>,
-        if_false: Box<Expression>,
-    },
+    Define(Rc<Define>),
+    If(Rc<If>),
     Function(fn(Vec<Expression>) -> Result<Expression, EnvError>),
-    Lambda {
-        params: Vec<Identifier>,
-        env: Rc<Environment>,
-        body: Box<Expression>,
-    },
+    Lambda(Rc<Lambda>),
     List(Vec<Expression>),
+}
+
+#[derive(Debug, Clone)]
+pub struct Define {
+    pub name: Expression,
+    pub value: Expression,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    pub cond: Expression,
+    pub if_true: Expression,
+    pub if_false: Expression,
+}
+
+#[derive(Debug, Clone)]
+pub struct Lambda {
+    pub params: Vec<Identifier>,
+    pub env: Rc<Environment>,
+    pub body: Expression,
 }
 
 #[derive(Debug, thiserror::Error)]
