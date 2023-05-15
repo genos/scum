@@ -119,7 +119,7 @@ pub(crate) fn eval(
                     }
                     e => Err(EvaluationError::TypeMismatch {
                         article: "a".to_string(),
-                        expected_type: "function".to_string(),
+                        expected_type: "function or lambda".to_string(),
                         input: hd.clone(),
                         output: e,
                     }),
