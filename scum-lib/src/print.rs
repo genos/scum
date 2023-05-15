@@ -45,7 +45,7 @@ impl fmt::Display for Lambda {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(lambda ")?;
         _paren(&self.params, f)?;
-        write!(f, " {})", self.body)
+        write!(f, " #<procedure {:p}>)", &self.body)
     }
 }
 
