@@ -1,7 +1,6 @@
 #![deny(unsafe_code)]
 mod eval;
 mod expression;
-mod macros;
 mod print;
 mod read;
 
