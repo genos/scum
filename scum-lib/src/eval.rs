@@ -79,7 +79,7 @@ pub(crate) fn eval(
             } = **l;
             Ok(Lambda {
                 params: params.clone(),
-                env: Environment::new(Some(Rc::new(environment.clone()))).into(),
+                env: Rc::new(environment.clone()),
                 body: body.clone(),
             }
             .into())
@@ -110,7 +110,7 @@ pub(crate) fn eval(
                             }
                             .into())
                         } else {
-                            let mut local = Environment::new(Some(env.clone()));
+                            let mut local = Environment::new(env.clone().into());
                             for (p, t) in params.iter().zip(tl) {
                                 local.define(p, &eval(t, environment)?);
                             }
