@@ -15,11 +15,21 @@ pub enum Atom {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Constant(Atom),
-    Define(Rc<Define>),
-    If(Rc<If>),
+    Define(Box<Define>),
+    If(Box<If>),
     Function(fn(Vec<Expression>) -> Result<Expression, EnvError>),
-    Lambda(Rc<Lambda>),
+    Lambda(Box<Lambda>),
     List(Vec<Expression>),
+}
+
+macro_rules! expr_from {
+    ($id:ident) => {
+        impl From<$id> for Expression {
+            fn from(value: $id) -> Self {
+                Expression::$id(Box::new(value))
+            }
+        }
+    };
 }
 
 #[derive(Debug, Clone)]
@@ -28,6 +38,8 @@ pub struct Define {
     pub value: Expression,
 }
 
+expr_from!(Define);
+
 #[derive(Debug, Clone)]
 pub struct If {
     pub cond: Expression,
@@ -35,12 +47,16 @@ pub struct If {
     pub if_false: Expression,
 }
 
+expr_from!(If);
+
 #[derive(Debug, Clone)]
 pub struct Lambda {
     pub params: Vec<Identifier>,
     pub env: Rc<Environment>,
     pub body: Expression,
 }
+
+expr_from!(Lambda);
 
 #[derive(Debug, thiserror::Error)]
 pub enum EnvError {

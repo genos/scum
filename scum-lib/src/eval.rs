@@ -29,7 +29,7 @@ pub(crate) fn eval(
             let x = if let Expression::Constant(Atom::Symbol(_)) = name {
                 name.clone()
             } else {
-                eval(&name, environment)?
+                eval(name, environment)?
             };
             if let Expression::Constant(Atom::Symbol(i)) = x {
                 let y = eval(value, environment)?;
@@ -77,11 +77,12 @@ pub(crate) fn eval(
                 ref body,
                 ..
             } = **l;
-            Ok(Expression::Lambda(Rc::new(Lambda {
+            Ok(Lambda {
                 params: params.clone(),
                 env: Environment::new(Some(Rc::new(environment.clone()))).into(),
                 body: body.clone(),
-            })))
+            }
+            .into())
         }
         Expression::List(xs) => {
             if xs.is_empty() {
@@ -113,7 +114,7 @@ pub(crate) fn eval(
                             for (p, t) in params.iter().zip(tl) {
                                 local.define(p, &eval(t, environment)?);
                             }
-                            eval(&body, &mut local)
+                            eval(body, &mut local)
                         }
                     }
                     e => Err(EvaluationError::TypeMismatch {
