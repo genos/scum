@@ -98,11 +98,7 @@ pub(crate) fn eval(
                         f(ys).map_err(Into::into)
                     }
                     Expression::Lambda(l) => {
-                        let Lambda {
-                            ref params,
-                            ref env,
-                            ref body,
-                        } = *l;
+                        let Lambda { params, env, body } = *l;
                         if params.len() != tl.len() {
                             Err(EnvError::WrongNumberOfArgs {
                                 expected: params.len(),
@@ -110,11 +106,11 @@ pub(crate) fn eval(
                             }
                             .into())
                         } else {
-                            let mut local = Environment::new(env.clone().into());
+                            let mut local = Environment::new(env.into());
                             for (p, t) in params.iter().zip(tl) {
                                 local.define(p, &eval(t, environment)?);
                             }
-                            eval(body, &mut local)
+                            eval(&body, &mut local)
                         }
                     }
                     e => Err(EvaluationError::TypeMismatch {
