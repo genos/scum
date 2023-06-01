@@ -4,7 +4,6 @@ use pest::{
     Parser,
 };
 use pest_derive::Parser;
-use std::rc::Rc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReadingError {
@@ -174,7 +173,7 @@ fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
                             return Err(ReadingError::ExpressionMismatch {
                                 article: "a".to_string(),
                                 expected: "symbol".to_string(),
-                                expression: x.clone(),
+                                expression: x,
                             })
                         }
                     }
@@ -191,7 +190,7 @@ fn lambda_to_expr(pairs: Pairs<Rule>, env: &mut Environment) -> Result<Expressio
         let body = read_impl(single(pieces.remove(0)), env)?;
         Ok(Lambda {
             params,
-            env: Rc::new(env.clone()),
+            env: env.clone(),
             body,
         }
         .into())

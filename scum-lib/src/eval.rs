@@ -1,5 +1,4 @@
 use crate::expression::{Atom, Define, EnvError, Environment, Expression, If, Lambda};
-use std::rc::Rc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EvaluationError {
@@ -79,7 +78,7 @@ pub(crate) fn eval(
             } = **l;
             Ok(Lambda {
                 params: params.clone(),
-                env: Rc::new(environment.clone()),
+                env: environment.clone(),
                 body: body.clone(),
             }
             .into())
@@ -98,7 +97,7 @@ pub(crate) fn eval(
                         f(ys).map_err(Into::into)
                     }
                     Expression::Lambda(l) => {
-                        let Lambda { params, env, body } = *l;
+                        let Lambda { params, mut env, body } = *l;
                         if params.len() != tl.len() {
                             Err(EnvError::WrongNumberOfArgs {
                                 expected: params.len(),
@@ -106,11 +105,10 @@ pub(crate) fn eval(
                             }
                             .into())
                         } else {
-                            let mut local = Environment::new(env.into());
                             for (p, t) in params.iter().zip(tl) {
-                                local.define(p, &eval(t, environment)?);
+                                env.define(p, &eval(t, environment)?);
                             }
-                            eval(&body, &mut local)
+                            eval(&body, &mut env)
                         }
                     }
                     e => Err(EvaluationError::TypeMismatch {
