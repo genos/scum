@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use im_rc::{hashmap, HashMap};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Identifier(pub String);
@@ -52,7 +52,7 @@ expr_from!(If);
 #[derive(Debug, Clone)]
 pub struct Lambda {
     pub params: Vec<Identifier>,
-    pub env: Rc<Environment>,
+    pub env: Environment,
     pub body: Expression,
 }
 
@@ -70,8 +70,7 @@ pub enum EnvError {
 
 #[derive(Debug, Clone)]
 pub struct Environment {
-    bindings: RefCell<HashMap<Identifier, Expression>>,
-    outer: Option<Rc<Environment>>,
+    bindings: HashMap<Identifier, Expression>,
 }
 
 macro_rules! equality {
@@ -126,50 +125,31 @@ macro_rules! binary_op {
 impl Default for Environment {
     fn default() -> Self {
         Self {
-            bindings: RefCell::new(HashMap::from([
-                (Identifier("=".to_string()), equality!(==)),
-                (Identifier("!=".to_string()), equality!(!=)),
-                (Identifier(">".to_string()), comparison!(>)),
-                (Identifier("<".to_string()), comparison!(<)),
-                (Identifier(">=".to_string()), comparison!(>=)),
-                (Identifier("<=".to_string()), comparison!(<=)),
-                (Identifier("+".to_string()), binary_op!(+)),
-                (Identifier("-".to_string()), binary_op!(-)),
-                (Identifier("*".to_string()), binary_op!(*)),
-                (Identifier("/".to_string()), binary_op!(/)),
-            ])),
-            outer: None,
+            bindings: hashmap![
+                Identifier("=".to_string()) => equality!(==),
+                Identifier("!=".to_string()) => equality!(!=),
+                Identifier(">".to_string()) => comparison!(>),
+                Identifier("<".to_string()) => comparison!(<),
+                Identifier(">=".to_string()) => comparison!(>=),
+                Identifier("<=".to_string()) => comparison!(<=),
+                Identifier("+".to_string()) => binary_op!(+),
+                Identifier("-".to_string()) => binary_op!(-),
+                Identifier("*".to_string()) => binary_op!(*),
+                Identifier("/".to_string()) => binary_op!(/),
+            ],
         }
     }
 }
 
 impl Environment {
-    pub(crate) fn new(outer: Option<Rc<Environment>>) -> Environment {
-        Self {
-            bindings: Default::default(),
-            outer,
-        }
-    }
-
     pub(crate) fn lookup(&self, identifier: &Identifier) -> Result<Expression, EnvError> {
-        if self.bindings.borrow().contains_key(identifier) {
-            Ok(self
-                .bindings
-                .borrow()
-                .get(identifier)
-                .cloned()
-                .expect("Impossible, we checked it was in there"))
-        } else {
-            match &self.outer {
-                None => Err(EnvError::NotFound(identifier.clone())),
-                Some(e) => e.lookup(identifier),
-            }
-        }
+        self.bindings
+            .get(identifier)
+            .cloned()
+            .ok_or(EnvError::NotFound(identifier.clone()))
     }
 
     pub(crate) fn define(&mut self, identifier: &Identifier, expression: &Expression) {
-        self.bindings
-            .borrow_mut()
-            .insert(identifier.clone(), expression.clone());
+        self.bindings.insert(identifier.clone(), expression.clone());
     }
 }

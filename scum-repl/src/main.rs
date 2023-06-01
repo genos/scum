@@ -13,7 +13,7 @@ fn main() -> Result<(), ReadlineError> {
         match rl.readline("λ>  ") {
             Ok(line) => {
                 rl.add_history_entry(line.as_str())?;
-                match scum.read_eval_string(&line) {
+                match scum.read_eval_print(&line) {
                     Ok(expression) => {
                         println!("{expression}");
                     }
