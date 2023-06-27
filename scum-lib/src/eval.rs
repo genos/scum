@@ -97,7 +97,11 @@ pub(crate) fn eval(
                         f(ys).map_err(Into::into)
                     }
                     Expression::Lambda(l) => {
-                        let Lambda { params, mut env, body } = *l;
+                        let Lambda {
+                            params,
+                            mut env,
+                            body,
+                        } = *l;
                         if params.len() != tl.len() {
                             Err(EnvError::WrongNumberOfArgs {
                                 expected: params.len(),
