@@ -5,6 +5,5 @@ edition = "2021"
 
 [dependencies]
 im-rc = "15.1.0"
-pest = "2.7.0"
-pest_derive = "2.7.0"
+peg = "0.8.1"
 thiserror = "1.0.40"
