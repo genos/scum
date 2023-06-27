@@ -48,18 +48,17 @@ peg::parser! {
         rule constant() -> Expression = a:atom() { Expression::Constant(a) }
         rule define() -> Expression =
             "(" _ "define" _ name:expression() _ value:expression() _ ")"
-            { Expression::Define(Box::new(Define {name, value})) }
+            { Define {name, value}.into() }
         rule ifte() -> Expression =
             "(" _ "if" _ cond:expression() _ if_true:expression() _ if_false:expression() ")"
-            { Expression::If(Box::new(If { cond, if_true, if_false })) }
+            { If { cond, if_true, if_false }.into() }
         rule params() -> Vec<Identifier> =
             "(" _ ps:(identifier() ** _) _ ")" { ps }
         rule lambda() -> Expression =
             "(" _ "lambda" _ params:params() _ body:expression() _ ")"
-            { Expression::Lambda(Box::new(Lambda { params, body, env: env.clone() })) }
+            { Lambda { params, body, env: env.clone() }.into() }
         rule list() -> Expression =
-            "(" _ es:(expression() ** _) _ ")"
-            { Expression::List(es) }
+            "(" _ es:(expression() ** _) _ ")" { Expression::List(es) }
         pub rule expression() -> Expression =
             constant() / define() / ifte() / lambda() / list()
     }
