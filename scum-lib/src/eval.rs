@@ -32,7 +32,7 @@ pub(crate) fn eval(
             };
             if let Expression::Constant(Atom::Symbol(i)) = x {
                 let y = eval(value, environment)?;
-                environment.define(&i, &y);
+                environment.define(i, y.clone());
                 Ok(y)
             } else {
                 Err(EvaluationError::TypeMismatch {
@@ -110,7 +110,7 @@ pub(crate) fn eval(
                             .into())
                         } else {
                             for (p, t) in params.iter().zip(tl) {
-                                env.define(p, &eval(t, environment)?);
+                                env.define(p.clone(), eval(t, environment)?);
                             }
                             eval(&body, &mut env)
                         }
