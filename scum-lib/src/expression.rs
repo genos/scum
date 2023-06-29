@@ -1,14 +1,15 @@
 use im_rc::{hashmap, HashMap};
+use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct Identifier(pub String);
+pub struct Identifier(pub Rc<str>);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Atom {
     Bool(bool),
     Float(f64),
     Int(i64),
-    Str(String),
+    Str(Rc<str>),
     Symbol(Identifier),
 }
 
@@ -22,23 +23,11 @@ pub enum Expression {
     List(Vec<Expression>),
 }
 
-macro_rules! expr_from {
-    ($id:ident) => {
-        impl From<$id> for Expression {
-            fn from(value: $id) -> Self {
-                Expression::$id(Box::new(value))
-            }
-        }
-    };
-}
-
 #[derive(Debug, Clone)]
 pub struct Define {
     pub name: Expression,
     pub value: Expression,
 }
-
-expr_from!(Define);
 
 #[derive(Debug, Clone)]
 pub struct If {
@@ -47,8 +36,6 @@ pub struct If {
     pub if_false: Expression,
 }
 
-expr_from!(If);
-
 #[derive(Debug, Clone)]
 pub struct Lambda {
     pub params: Vec<Identifier>,
@@ -56,7 +43,19 @@ pub struct Lambda {
     pub body: Expression,
 }
 
-expr_from!(Lambda);
+macro_rules! expr_from {
+    ($($id:ident)*) => {
+        $(
+        impl From<$id> for Expression {
+            fn from(value: $id) -> Self {
+                Expression::$id(Box::new(value))
+            }
+        }
+        )*
+    };
+}
+
+expr_from!(Define If Lambda);
 
 #[derive(Debug, thiserror::Error)]
 pub enum EnvError {
@@ -126,16 +125,16 @@ impl Default for Environment {
     fn default() -> Self {
         Self {
             bindings: hashmap![
-                Identifier("=".to_string()) => equality!(==),
-                Identifier("!=".to_string()) => equality!(!=),
-                Identifier(">".to_string()) => comparison!(>),
-                Identifier("<".to_string()) => comparison!(<),
-                Identifier(">=".to_string()) => comparison!(>=),
-                Identifier("<=".to_string()) => comparison!(<=),
-                Identifier("+".to_string()) => binary_op!(+),
-                Identifier("-".to_string()) => binary_op!(-),
-                Identifier("*".to_string()) => binary_op!(*),
-                Identifier("/".to_string()) => binary_op!(/),
+                Identifier("=".into()) => equality!(==),
+                Identifier("!=".into()) => equality!(!=),
+                Identifier(">".into()) => comparison!(>),
+                Identifier("<".into()) => comparison!(<),
+                Identifier(">=".into()) => comparison!(>=),
+                Identifier("<=".into()) => comparison!(<=),
+                Identifier("+".into()) => binary_op!(+),
+                Identifier("-".into()) => binary_op!(-),
+                Identifier("*".into()) => binary_op!(*),
+                Identifier("/".into()) => binary_op!(/),
             ],
         }
     }
@@ -149,7 +148,7 @@ impl Environment {
             .ok_or(EnvError::NotFound(identifier.clone()))
     }
 
-    pub(crate) fn define(&mut self, identifier: &Identifier, expression: &Expression) {
-        self.bindings.insert(identifier.clone(), expression.clone());
+    pub(crate) fn define(&mut self, identifier: Identifier, expression: Expression) {
+        self.bindings.insert(identifier, expression);
     }
 }

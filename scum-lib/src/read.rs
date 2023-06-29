@@ -15,7 +15,7 @@ peg::parser! {
         // see https://groups.csail.mit.edu/mac/ftpdir/scheme-reports/r5rs-html/r5rs_9.html
         // identifiers
         rule identifier() -> Identifier =
-            i:$(initial() subsequent()* / "+" / "-") { Identifier(i.to_string()) }
+            i:$(initial() subsequent()* / "+" / "-") { Identifier(i.into()) }
         rule initial() -> char =
             ['a'..='z' | 'A'..='Z' | '!' | '$' | '%' | '&' | '*' | '/' | ':' | '<'
             | '=' | '>' | '?' | '^' | '_' | '~']
@@ -40,7 +40,7 @@ peg::parser! {
             b:boolean()  { Atom::Bool(b) }
             / f:float()  { Atom::Float(f) }
             / i:int()    { Atom::Int(i) }
-            / s:string() { Atom::Str(s.to_string()) }
+            / s:string() { Atom::Str(s.into()) }
             / s:symbol() { Atom::Symbol(s) }
 
         // expressions
