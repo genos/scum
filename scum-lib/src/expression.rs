@@ -1,8 +1,20 @@
-use im_rc::{hashmap, HashMap};
+use im_rc::{hashmap, HashMap, Vector};
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
-pub struct Identifier(pub Rc<str>);
+pub struct Identifier(Rc<str>);
+
+impl From<&str> for Identifier {
+    fn from(s: &str) -> Self {
+        Self(s.into())
+    }
+}
+
+impl Identifier {
+    pub fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Atom {
@@ -16,11 +28,11 @@ pub enum Atom {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Constant(Atom),
-    Define(Box<Define>),
-    If(Box<If>),
-    Function(fn(Vec<Expression>) -> Result<Expression, EnvError>),
-    Lambda(Box<Lambda>),
-    List(Vec<Expression>),
+    Define(Rc<Define>),
+    If(Rc<If>),
+    Function(fn(Rc<[Expression]>) -> Result<Expression, EnvError>),
+    Lambda(Rc<Lambda>),
+    List(Vector<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -38,24 +50,24 @@ pub struct If {
 
 #[derive(Debug, Clone)]
 pub struct Lambda {
-    pub params: Vec<Identifier>,
+    pub params: Vector<Identifier>,
     pub env: Environment,
     pub body: Expression,
 }
 
 macro_rules! expr_from {
-    ($($id:ident)*) => {
+    ($($id:ident),*) => {
         $(
         impl From<$id> for Expression {
             fn from(value: $id) -> Self {
-                Expression::$id(Box::new(value))
+                Expression::$id(Rc::new(value))
             }
         }
         )*
     };
 }
 
-expr_from!(Define If Lambda);
+expr_from!(Define, If, Lambda);
 
 #[derive(Debug, thiserror::Error)]
 pub enum EnvError {
@@ -74,14 +86,14 @@ pub struct Environment {
 
 macro_rules! equality {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
             [x, y] => match (x, y) {
                 (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
                 (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
                 (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a as f64 $op *b))),
                 (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
+                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
+                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a as f64 $op *b))),
                 (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
                 _ => Ok(Expression::Constant(Atom::Bool(false)))
             },
@@ -92,11 +104,11 @@ macro_rules! equality {
 
 macro_rules! comparison {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
             [x, y] => match (x, y) {
                 (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
                 (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
+                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
                 (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool((*a as f64) $op *b))),
                 _ => Err(EnvError::NonNumericArgs(x.clone(), y.clone()))
             },
@@ -107,7 +119,7 @@ macro_rules! comparison {
 
 macro_rules! binary_op {
     ($op:tt) => {
-        Expression::Function(|xs: Vec<Expression>| match &xs[..] {
+        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
             [x, y] => match (x, y) {
                 (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b))),
                 (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b as f64))),

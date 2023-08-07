@@ -13,9 +13,10 @@ pub(crate) fn read(input: &str, env: &mut Environment) -> Result<Expression, Rea
 peg::parser! {
     grammar scum_parser(env: &Environment) for str {
         // see https://groups.csail.mit.edu/mac/ftpdir/scheme-reports/r5rs-html/r5rs_9.html
+
         // identifiers
         rule identifier() -> Identifier =
-            i:$(initial() subsequent()* / "+" / "-") { Identifier(i.into()) }
+            i:$(initial() subsequent()* / "+" / "-") { Identifier::from(i) }
         rule initial() -> char =
             ['a'..='z' | 'A'..='Z' | '!' | '$' | '%' | '&' | '*' | '/' | ':' | '<'
             | '=' | '>' | '?' | '^' | '_' | '~']
@@ -56,9 +57,10 @@ peg::parser! {
             "(" _ ps:(identifier() ** _) _ ")" { ps }
         rule lambda() -> Expression =
             "(" _ "lambda" _ params:params() _ body:expression() _ ")"
-            { Lambda { params, body, env: env.clone() }.into() }
+            { Lambda { params: params.into(), body, env: env.clone() }.into() }
         rule list() -> Expression =
-            "(" _ es:(expression() ** _) _ ")" { Expression::List(es) }
+            "(" _ es:(expression() ** _) _ ")" { Expression::List(es.into()) }
+
         pub rule expression() -> Expression =
             constant() / define() / ifte() / lambda() / list()
     }

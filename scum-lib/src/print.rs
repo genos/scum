@@ -1,9 +1,10 @@
 use crate::expression::{Atom, Define, Expression, Identifier, If, Lambda};
+use im_rc::Vector;
 use std::fmt;
 
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -19,7 +20,7 @@ impl fmt::Display for Atom {
     }
 }
 
-fn _paren<T: fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
+fn _paren<T: Clone + fmt::Display>(xs: &Vector<T>, f: &mut fmt::Formatter) -> fmt::Result {
     let mut sep = "";
     write!(f, "(")?;
     for x in xs {
