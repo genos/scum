@@ -6,6 +6,13 @@ fn main() -> Result<(), ReadlineError> {
     let config = Config::builder().edit_mode(EditMode::Vi).build();
     let mut scum = Scum::default();
     let mut rl: Editor<(), _> = Editor::with_config(config)?;
+    println!(
+        r#"
+  ___ ______ ____ _ 
+ (_-</ __/ // /  ' \
+/___/\__/\_,_/_/_/_/
+"#
+    );
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
     }

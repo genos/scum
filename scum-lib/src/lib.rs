@@ -14,12 +14,14 @@ pub enum ScumError {
     EvaluationError(#[from] crate::eval::EvaluationError),
 }
 
+/// A Scum top-level consists of an environment…
 #[derive(Default)]
 pub struct Scum {
     env: crate::expression::Environment,
 }
 
 impl Scum {
+    /// …and a REPL.
     pub fn read_eval_print(&mut self, input: &str) -> Result<String, ScumError> {
         crate::read::read(input, &mut self.env)
             .map_err(ScumError::from)

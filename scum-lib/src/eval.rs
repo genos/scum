@@ -70,59 +70,43 @@ pub(crate) fn eval(
                 })
             }
         }
-        Expression::Lambda(l) => {
-            let Lambda {
-                ref params,
-                ref body,
-                ..
-            } = **l;
-            Ok(Lambda {
-                params: params.clone(),
-                env: environment.clone(),
-                body: body.clone(),
-            }
-            .into())
+        Expression::Lambda(l) => Ok(Lambda {
+            params: l.params.clone(),
+            env: environment.clone(),
+            body: l.body.clone(),
         }
-        Expression::List(xs) => {
-            if xs.is_empty() {
-                Ok(expression.clone())
-            } else {
-                let (hd, tl) = xs.split_first().expect("List was guaranteed nonempty.");
-                match eval(hd, environment)? {
-                    Expression::Function(f) => {
-                        let mut ys = vec![];
-                        for y in tl {
-                            ys.push(eval(y, environment)?);
+        .into()),
+        Expression::List(xs) => match xs.head() {
+            None => Ok(expression.clone()),
+            Some(hd) => match eval(hd, environment)? {
+                Expression::Function(f) => xs
+                    .iter()
+                    .skip(1)
+                    .map(|y| eval(y, environment))
+                    .collect::<Result<_, _>>()
+                    .and_then(|ys| f(ys).map_err(Into::into)),
+                Expression::Lambda(l) => {
+                    if l.params.len() != xs.len() - 1 {
+                        Err(EnvError::WrongNumberOfArgs {
+                            expected: l.params.len(),
+                            actual: xs.len() - 1,
                         }
-                        f(ys).map_err(Into::into)
-                    }
-                    Expression::Lambda(l) => {
-                        let Lambda {
-                            params,
-                            mut env,
-                            body,
-                        } = *l;
-                        if params.len() != tl.len() {
-                            Err(EnvError::WrongNumberOfArgs {
-                                expected: params.len(),
-                                actual: tl.len(),
-                            }
-                            .into())
-                        } else {
-                            for (p, t) in params.iter().zip(tl) {
-                                env.define(p.clone(), eval(t, environment)?);
-                            }
-                            eval(&body, &mut env)
+                        .into())
+                    } else {
+                        let mut env = l.env.clone();
+                        for (p, t) in l.params.iter().zip(xs.iter().skip(1)) {
+                            env.define(p.clone(), eval(t, environment)?);
                         }
+                        eval(&l.body, &mut env)
                     }
-                    e => Err(EvaluationError::TypeMismatch {
-                        article: "a".to_string(),
-                        expected_type: "function or lambda".to_string(),
-                        input: hd.clone(),
-                        output: e,
-                    }),
                 }
-            }
-        }
+                e => Err(EvaluationError::TypeMismatch {
+                    article: "a".to_string(),
+                    expected_type: "function or lambda".to_string(),
+                    input: hd.clone(),
+                    output: e,
+                }),
+            },
+        },
     }
 }
