@@ -1,4 +1,5 @@
 use im_rc::{hashmap, HashMap, Vector};
+use itertools::Itertools;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
@@ -16,7 +17,7 @@ impl Identifier {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum Atom {
     Bool(bool),
     Float(f64),
@@ -71,9 +72,9 @@ expr_from!(Define, If, Lambda);
 
 #[derive(Debug, thiserror::Error)]
 pub enum EnvError {
-    #[error("Expected {expected} arguments, received {actual}")]
-    WrongNumberOfArgs { expected: usize, actual: usize },
-    #[error("Expected two numeric args, received {0} and {1}")]
+    #[error("Different constant types; received {0} and {1}")]
+    DifferentConstantTypes(Expression, Expression),
+    #[error("Expected two numeric args; received {0} and {1}")]
     NonNumericArgs(Expression, Expression),
     #[error("Unknown identifier {0}")]
     NotFound(Identifier),
@@ -84,51 +85,63 @@ pub struct Environment {
     bindings: HashMap<Identifier, Expression>,
 }
 
-macro_rules! equality {
-    ($op:tt) => {
-        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
-            [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a as f64 $op *b))),
-                (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                _ => Ok(Expression::Constant(Atom::Bool(false)))
-            },
-            _ => Err(EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
-        })
+macro_rules! apply_rel {
+    ($op:tt, $x:expr, $y:expr) => {
+        match ($x, $y) {
+            (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => *a $op *b,
+            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => *a $op *b,
+            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => *a $op *b,
+            (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => *a $op *b,
+            (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => *a $op *b,
+            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => *a $op (*b as f64),
+            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => (*a as f64) $op *b,
+            (_, _) => return Err(EnvError::DifferentConstantTypes($x.clone(), $y.clone()))
+        }
     };
 }
 
-macro_rules! comparison {
-    ($op:tt) => {
-        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
-            [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Bool(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Bool((*a as f64) $op *b))),
-                _ => Err(EnvError::NonNumericArgs(x.clone(), y.clone()))
-            },
-            _ => Err(EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
-        })
+macro_rules! apply_op {
+    ($op:tt, $x:expr, $y:expr) => {
+        match ($x, $y) {
+            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Expression::Constant(Atom::Float(*a $op *b)),
+            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Expression::Constant(Atom::Int(*a $op *b)),
+            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Expression::Constant(Atom::Float(*a $op *b as f64)),
+            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Expression::Constant(Atom::Float((*a as f64) $op *b)),
+            _ => return Err(EnvError::NonNumericArgs($x.clone(), $y.clone()))
+        }
     };
 }
 
-macro_rules! binary_op {
+macro_rules! relation {
     ($op:tt) => {
-        Expression::Function(|xs: Rc<[Expression]>| match &xs[..] {
-            [x, y] => match (x, y) {
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b))),
-                (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Float(*a $op *b as f64))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Ok(Expression::Constant(Atom::Int(*a $op *b))),
-                (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Ok(Expression::Constant(Atom::Float((*a as f64) $op *b))),
-                _ => Err(EnvError::NonNumericArgs(x.clone(), y.clone()))
-
+        Expression::Function(|xs: Rc<[Expression]>| {
+            let z = true;
+            if xs.is_empty() {
+                Ok(Expression::Constant(Atom::Bool(z)))
+            } else {
+                let mut result = z;
+                for (x, y) in xs.iter().tuple_windows() {
+                    result = apply_rel!($op, x, y);
+                }
+                Ok(Expression::Constant(Atom::Bool(result)))
             }
-            _ => Err(EnvError::WrongNumberOfArgs{expected: 2, actual: xs.len()}),
+        })
+    };
+}
+
+macro_rules! binary {
+    ($op:tt, $zero:expr) => {
+        Expression::Function(|xs: Rc<[Expression]>| {
+            let z = Expression::Constant(Atom::Int($zero));
+            if xs.is_empty() {
+                Ok(z)
+            } else {
+                let mut result = z;
+                for (x, y) in xs.iter().tuple_windows() {
+                    result = apply_op!($op, x, y);
+                }
+                Ok(result)
+            }
         })
     };
 }
@@ -137,16 +150,16 @@ impl Default for Environment {
     fn default() -> Self {
         Self {
             bindings: hashmap![
-                Identifier("=".into()) => equality!(==),
-                Identifier("!=".into()) => equality!(!=),
-                Identifier(">".into()) => comparison!(>),
-                Identifier("<".into()) => comparison!(<),
-                Identifier(">=".into()) => comparison!(>=),
-                Identifier("<=".into()) => comparison!(<=),
-                Identifier("+".into()) => binary_op!(+),
-                Identifier("-".into()) => binary_op!(-),
-                Identifier("*".into()) => binary_op!(*),
-                Identifier("/".into()) => binary_op!(/),
+                Identifier("=".into()) => relation!(==),
+                Identifier("!=".into()) => relation!(!=),
+                Identifier(">".into()) => relation!(>),
+                Identifier("<".into()) => relation!(<),
+                Identifier(">=".into()) => relation!(>=),
+                Identifier("<=".into()) => relation!(<=),
+                Identifier("+".into()) => binary!(+, 0),
+                Identifier("-".into()) => binary!(-, 0),
+                Identifier("*".into()) => binary!(*, 1),
+                Identifier("/".into()) => binary!(/, 1),
             ],
         }
     }
