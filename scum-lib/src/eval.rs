@@ -9,6 +9,8 @@ pub enum EvaluationError {
         input: Expression,
         output: Expression,
     },
+    #[error("Expected {expected} arguments, received {actual}")]
+    WrongNumberOfArgs { expected: usize, actual: usize },
     #[error("{0}")]
     EnvError(#[from] EnvError),
 }
@@ -19,7 +21,7 @@ pub(crate) fn eval(
 ) -> Result<Expression, EvaluationError> {
     match expression {
         Expression::Constant(Atom::Symbol(s)) => environment.lookup(s).map_err(Into::into),
-        Expression::Constant(_) => Ok(expression.clone()),
+        Expression::Constant(_) | Expression::Function(_) => Ok(expression.clone()),
         Expression::Define(d) => {
             let Define {
                 ref name,
@@ -43,7 +45,6 @@ pub(crate) fn eval(
                 })
             }
         }
-        Expression::Function(_) => Ok(expression.clone()),
         Expression::If(i) => {
             let If {
                 ref cond,
@@ -86,18 +87,17 @@ pub(crate) fn eval(
                     .collect::<Result<_, _>>()
                     .and_then(|ys| f(ys).map_err(Into::into)),
                 Expression::Lambda(l) => {
-                    if l.params.len() != xs.len() - 1 {
-                        Err(EnvError::WrongNumberOfArgs {
-                            expected: l.params.len(),
-                            actual: xs.len() - 1,
-                        }
-                        .into())
-                    } else {
+                    if l.params.len() == xs.len() - 1 {
                         let mut env = l.env.clone();
                         for (p, t) in l.params.iter().zip(xs.iter().skip(1)) {
                             env.define(p.clone(), eval(t, environment)?);
                         }
                         eval(&l.body, &mut env)
+                    } else {
+                        Err(EvaluationError::WrongNumberOfArgs {
+                            expected: l.params.len(),
+                            actual: xs.len() - 1,
+                        })
                     }
                 }
                 e => Err(EvaluationError::TypeMismatch {

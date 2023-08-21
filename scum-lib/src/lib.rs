@@ -22,6 +22,10 @@ pub struct Scum {
 
 impl Scum {
     /// …and a REPL.
+    ///
+    /// # Errors
+    /// If evaluating the expression in the current environment returns an error, that will be
+    /// bubbled up to the top-level.
     pub fn read_eval_print(&mut self, input: &str) -> Result<String, ScumError> {
         crate::read::read(input, &mut self.env)
             .map_err(ScumError::from)
