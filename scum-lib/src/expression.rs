@@ -45,8 +45,8 @@ pub struct Define {
 #[derive(Debug, Clone)]
 pub struct If {
     pub cond: Expression,
-    pub if_true: Expression,
-    pub if_false: Expression,
+    pub true_: Expression,
+    pub false_: Expression,
 }
 
 #[derive(Debug, Clone)]
@@ -147,6 +147,8 @@ macro_rules! binary {
 }
 
 impl Default for Environment {
+    // Leave proper handling of float comparisons up to user
+    #[allow(clippy::float_cmp)]
     fn default() -> Self {
         Self {
             bindings: hashmap![

@@ -6,7 +6,7 @@ pub enum ReadingError {
     ParseError(#[from] peg::error::ParseError<peg::str::LineCol>),
 }
 
-pub(crate) fn read(input: &str, env: &mut Environment) -> Result<Expression, ReadingError> {
+pub fn read(input: &str, env: &Environment) -> Result<Expression, ReadingError> {
     scum_parser::expression(input, env).map_err(Into::into)
 }
 
@@ -51,8 +51,8 @@ peg::parser! {
             "(" _ "define" _ name:expression() _ value:expression() _ ")"
             { Define {name, value}.into() }
         rule ifte() -> Expression =
-            "(" _ "if" _ cond:expression() _ if_true:expression() _ if_false:expression() ")"
-            { If { cond, if_true, if_false }.into() }
+            "(" _ "if" _ cond:expression() _ true_:expression() _ false_:expression() ")"
+            { If { cond, true_, false_ }.into() }
         rule params() -> Vec<Identifier> =
             "(" _ ps:(identifier() ** _) _ ")" { ps }
         rule lambda() -> Expression =

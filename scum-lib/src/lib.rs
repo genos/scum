@@ -1,15 +1,24 @@
-#![deny(unsafe_code)]
+//! It's about time I made a Lisp of some sort…
+#![forbid(missing_docs)]
+#![forbid(unsafe_code)]
+#![deny(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
 mod eval;
 mod expression;
 mod print;
 mod read;
 
 #[derive(Debug, thiserror::Error)]
+/// Top-level errors
 pub enum ScumError {
+    /// Reading error: {`0`}
     #[error("Reading error: {0}")]
     ReadingError(#[from] crate::read::ReadingError),
+    /// Env error: {`0`}
     #[error("Env error: {0}")]
     EnvError(#[from] crate::expression::EnvError),
+    /// Evaluation error: {`0`}
     #[error("Evaluation error: {0}")]
     EvaluationError(#[from] crate::eval::EvaluationError),
 }
@@ -27,7 +36,7 @@ impl Scum {
     /// If evaluating the expression in the current environment returns an error, that will be
     /// bubbled up to the top-level.
     pub fn read_eval_print(&mut self, input: &str) -> Result<String, ScumError> {
-        crate::read::read(input, &mut self.env)
+        crate::read::read(input, &self.env)
             .map_err(ScumError::from)
             .and_then(|x| crate::eval::eval(&x, &mut self.env).map_err(ScumError::from))
             .map(|expression| expression.to_string())
