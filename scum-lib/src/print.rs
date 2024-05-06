@@ -11,11 +11,11 @@ impl fmt::Display for Identifier {
 impl fmt::Display for Atom {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Atom::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
-            Atom::Float(x) => write!(f, "{x:?}"),
-            Atom::Int(n) => write!(f, "{n}"),
-            Atom::Str(s) => write!(f, "{s}"),
-            Atom::Symbol(s) => write!(f, "{s}"),
+            Self::Bool(b) => write!(f, "{}", if *b { "#t" } else { "#f" }),
+            Self::Float(x) => write!(f, "{x:?}"),
+            Self::Int(n) => write!(f, "{n}"),
+            Self::Str(s) => write!(f, "{s}"),
+            Self::Symbol(s) => write!(f, "{s}"),
         }
     }
 }
@@ -38,7 +38,7 @@ impl fmt::Display for Define {
 
 impl fmt::Display for If {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(if {} {} {})", self.cond, self.if_true, self.if_false)
+        write!(f, "(if {} {} {})", self.cond, self.true_, self.false_)
     }
 }
 
@@ -53,12 +53,12 @@ impl fmt::Display for Lambda {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expression::Constant(x) => write!(f, "{x}"),
-            Expression::Define(d) => write!(f, "{d}"),
-            Expression::If(i) => write!(f, "{i}"),
-            Expression::Function(g) => write!(f, "#<function {g:p}>"),
-            Expression::Lambda(l) => write!(f, "{l}"),
-            Expression::List(xs) => _paren(xs, f),
+            Self::Constant(x) => write!(f, "{x}"),
+            Self::Define(d) => write!(f, "{d}"),
+            Self::If(i) => write!(f, "{i}"),
+            Self::Function(g) => write!(f, "#<function {g:p}>"),
+            Self::Lambda(l) => write!(f, "{l}"),
+            Self::List(xs) => _paren(xs, f),
         }
     }
 }

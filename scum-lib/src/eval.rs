@@ -15,7 +15,7 @@ pub enum EvaluationError {
     EnvError(#[from] EnvError),
 }
 
-pub(crate) fn eval(
+pub fn eval(
     expression: &Expression,
     environment: &mut Environment,
 ) -> Result<Expression, EvaluationError> {
@@ -48,8 +48,8 @@ pub(crate) fn eval(
         Expression::If(i) => {
             let If {
                 ref cond,
-                ref if_true,
-                ref if_false,
+                ref true_,
+                ref false_,
             } = **i;
             let cond2 = if let Expression::Constant(Atom::Bool(_)) = cond {
                 cond.clone()
@@ -58,9 +58,9 @@ pub(crate) fn eval(
             };
             if let Expression::Constant(Atom::Bool(b)) = cond2 {
                 if b {
-                    eval(if_true, environment)
+                    eval(true_, environment)
                 } else {
-                    eval(if_false, environment)
+                    eval(false_, environment)
                 }
             } else {
                 Err(EvaluationError::TypeMismatch {
