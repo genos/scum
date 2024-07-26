@@ -114,6 +114,7 @@ macro_rules! apply_op {
 
 macro_rules! relation {
     ($op:tt) => {
+        #[allow(clippy::cast_precision_loss)]
         Expression::Function(|xs: Rc<[Expression]>| {
             let z = true;
             if xs.is_empty() {
@@ -131,6 +132,7 @@ macro_rules! relation {
 
 macro_rules! binary {
     ($op:tt, $zero:expr) => {
+        #[allow(clippy::cast_precision_loss)]
         Expression::Function(|xs: Rc<[Expression]>| {
             let z = Expression::Constant(Atom::Int($zero));
             if xs.is_empty() {
