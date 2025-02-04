@@ -20,7 +20,7 @@ impl fmt::Display for Atom {
     }
 }
 
-fn _paren<T: Clone + fmt::Display>(xs: &Vector<T>, f: &mut fmt::Formatter) -> fmt::Result {
+fn paren<T: Clone + fmt::Display>(xs: &Vector<T>, f: &mut fmt::Formatter) -> fmt::Result {
     let mut sep = "";
     write!(f, "(")?;
     for x in xs {
@@ -45,7 +45,7 @@ impl fmt::Display for If {
 impl fmt::Display for Lambda {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(lambda ")?;
-        _paren(&self.params, f)?;
+        paren(&self.params, f)?;
         write!(f, " #<procedure {:p}>)", &self.body)
     }
 }
@@ -58,7 +58,7 @@ impl fmt::Display for Expression {
             Self::If(i) => write!(f, "{i}"),
             Self::Function(g) => write!(f, "#<function {g:p}>"),
             Self::Lambda(l) => write!(f, "{l}"),
-            Self::List(xs) => _paren(xs, f),
+            Self::List(xs) => paren(xs, f),
         }
     }
 }
