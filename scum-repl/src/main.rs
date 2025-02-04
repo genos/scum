@@ -7,11 +7,11 @@ fn main() -> Result<(), ReadlineError> {
     let mut scum = Scum::default();
     let mut rl: Editor<(), _> = Editor::with_config(config)?;
     println!(
-        r#"
+        r"
   ___ ______ ____ _ 
  (_-</ __/ // /  ' \
 /___/\__/\_,_/_/_/_/
-"#
+"
     );
     if rl.load_history("history.txt").is_err() {
         println!("No previous history.");
@@ -30,7 +30,7 @@ fn main() -> Result<(), ReadlineError> {
                 }
             }
             Err(ReadlineError::Interrupted) => {
-                //
+                eprintln!("^C");
             }
             Err(ReadlineError::Eof) => {
                 eprintln!("Bye!");

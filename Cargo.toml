@@ -6,4 +6,7 @@ resolver = "2"
 codegen-units = 1
 lto = true
 panic = "abort"
-strip = true
+strip = "none"
+
+[profile.dev]
+debug = 0
