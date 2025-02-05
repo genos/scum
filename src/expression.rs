@@ -83,33 +83,6 @@ pub struct Environment {
     bindings: HashMap<Identifier, Expression>,
 }
 
-macro_rules! apply_rel {
-    ($op:tt, $x:expr, $y:expr) => {
-        match ($x, $y) {
-            (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => a $op b,
-            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => a $op b,
-            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => a $op b,
-            (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => a $op b,
-            (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => a $op b,
-            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => *a $op (*b as f64),
-            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => (*a as f64) $op *b,
-            _ => return Err(EnvError::DifferentConstantTypes($x.clone(), $y.clone()))
-        }
-    };
-}
-
-macro_rules! apply_op {
-    ($op:tt, $x:expr, $y:expr) => {
-        match ($x, $y) {
-            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => Expression::Constant(Atom::Float(a $op b)),
-            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => Expression::Constant(Atom::Int(a $op b)),
-            (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => Expression::Constant(Atom::Float(*a $op *b as f64)),
-            (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => Expression::Constant(Atom::Float((*a as f64) $op *b)),
-            _ => return Err(EnvError::NonNumericArgs($x.clone(), $y.clone()))
-        }
-    };
-}
-
 macro_rules! relation {
     ($op:tt) => {
         #[allow(clippy::cast_precision_loss)]
@@ -117,7 +90,16 @@ macro_rules! relation {
             let mut result = true;
             for w in xs.windows(2) {
                 if let [x, y] = w {
-                    result = apply_rel!($op, x, y);
+                    match (x, y) {
+                        (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => result = *a $op (*b as f64),
+                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => result = (*a as f64) $op *b,
+                        _ => return Err(EnvError::DifferentConstantTypes(x.clone(), y.clone()))
+                    }
                 }
             }
             Ok(Expression::Constant(Atom::Bool(result)))
@@ -126,13 +108,27 @@ macro_rules! relation {
 }
 
 macro_rules! binary {
-    ($op:tt, $zero:expr) => {
+    ($op:tt, $id:expr) => {
         #[allow(clippy::cast_precision_loss)]
         Expression::Function(|xs: Arc<[Expression]>| {
-            let mut result = Expression::Constant(Atom::Int($zero));
+            let mut result = Expression::Constant(Atom::Int($id));
             for w in xs.windows(2) {
                 if let [x, y] = w {
-                    result = apply_op!($op, x, y);
+                    match (x, y) {
+                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => {
+                            result = Expression::Constant(Atom::Float(a $op b));
+                        }
+                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => {
+                            result = Expression::Constant(Atom::Int(a $op b));
+                        }
+                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => {
+                            result = Expression::Constant(Atom::Float(*a $op *b as f64));
+                        }
+                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => {
+                            result = Expression::Constant(Atom::Float((*a as f64) $op *b));
+                        }
+                        _ => return Err(EnvError::NonNumericArgs(x.clone(), y.clone()))
+                    }
                 }
             }
             Ok(result)
