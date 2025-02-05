@@ -26,7 +26,7 @@ pub enum ScumError {
 /// A Scum top-level consists of an environment…
 #[derive(Default)]
 pub struct Scum {
-    env: crate::expression::Environment,
+    env: expression::Environment,
 }
 
 impl Scum {
@@ -36,9 +36,9 @@ impl Scum {
     /// If evaluating the expression in the current environment returns an error, that will be
     /// bubbled up to the top-level.
     pub fn read_eval_print(&mut self, input: &str) -> Result<String, ScumError> {
-        crate::read::read(input, &self.env)
+        read::read(input, &self.env)
             .map_err(ScumError::from)
-            .and_then(|x| crate::eval::eval(&x, &mut self.env).map_err(ScumError::from))
+            .and_then(|x| eval::eval(&x, &mut self.env).map_err(ScumError::from))
             .map(|expression| expression.to_string())
     }
 }

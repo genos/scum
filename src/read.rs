@@ -12,6 +12,9 @@ pub fn read(input: &str, env: &Environment) -> Result<Expression, ReadingError> 
 
 peg::parser! {
     grammar scum_parser(env: &Environment) for str {
+        pub rule expression() -> Expression =
+            constant() / define() / ifte() / lambda() / list()
+
         // see https://groups.csail.mit.edu/mac/ftpdir/scheme-reports/r5rs-html/r5rs_9.html
 
         // identifiers
@@ -57,11 +60,8 @@ peg::parser! {
             "(" _ ps:(identifier() ** _) _ ")" { ps }
         rule lambda() -> Expression =
             "(" _ "lambda" _ params:params() _ body:expression() _ ")"
-            { Lambda { params: params.into(), body, env: env.clone() }.into() }
+            { Lambda { params, body, env: env.clone() }.into() }
         rule list() -> Expression =
             "(" _ es:(expression() ** _) _ ")" { Expression::List(es.into()) }
-
-        pub rule expression() -> Expression =
-            constant() / define() / ifte() / lambda() / list()
     }
 }

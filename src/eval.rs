@@ -1,11 +1,12 @@
 use crate::expression::{Atom, Define, EnvError, Environment, Expression, If, Lambda};
+use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EvaluationError {
     #[error("Expected {article} {expected_type}, but evaluation of {input} led to {output}")]
     TypeMismatch {
-        article: String,
-        expected_type: String,
+        article: Arc<str>,
+        expected_type: Arc<str>,
         input: Expression,
         output: Expression,
     },
@@ -38,8 +39,8 @@ pub fn eval(
                 Ok(y)
             } else {
                 Err(EvaluationError::TypeMismatch {
-                    article: "an".to_string(),
-                    expected_type: "identifier".to_string(),
+                    article: "an".into(),
+                    expected_type: "identifier".into(),
                     input: name.clone(),
                     output: x.clone(),
                 })
@@ -57,15 +58,11 @@ pub fn eval(
                 eval(cond, environment)?
             };
             if let Expression::Constant(Atom::Bool(b)) = cond2 {
-                if b {
-                    eval(true_, environment)
-                } else {
-                    eval(false_, environment)
-                }
+                eval(if b { true_ } else { false_ }, environment)
             } else {
                 Err(EvaluationError::TypeMismatch {
-                    article: "a".to_string(),
-                    expected_type: "bool".to_string(),
+                    article: "a".into(),
+                    expected_type: "bool".into(),
                     input: cond.clone(),
                     output: cond2,
                 })
@@ -77,7 +74,7 @@ pub fn eval(
             body: l.body.clone(),
         }
         .into()),
-        Expression::List(xs) => match xs.head() {
+        Expression::List(xs) => match xs.first() {
             None => Ok(expression.clone()),
             Some(hd) => match eval(hd, environment)? {
                 Expression::Function(f) => xs
@@ -101,8 +98,8 @@ pub fn eval(
                     }
                 }
                 e => Err(EvaluationError::TypeMismatch {
-                    article: "a".to_string(),
-                    expected_type: "function or lambda".to_string(),
+                    article: "a".into(),
+                    expected_type: "function or lambda".into(),
                     input: hd.clone(),
                     output: e,
                 }),
