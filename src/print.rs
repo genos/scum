@@ -1,5 +1,4 @@
 use crate::expression::{Atom, Define, Expression, Identifier, If, Lambda};
-use im_rc::Vector;
 use std::fmt;
 
 impl fmt::Display for Identifier {
@@ -20,7 +19,7 @@ impl fmt::Display for Atom {
     }
 }
 
-fn paren<T: Clone + fmt::Display>(xs: &Vector<T>, f: &mut fmt::Formatter) -> fmt::Result {
+fn paren<T: Clone + fmt::Display>(xs: &[T], f: &mut fmt::Formatter) -> fmt::Result {
     let mut sep = "";
     write!(f, "(")?;
     for x in xs {

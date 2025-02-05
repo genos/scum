@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 use rustyline::{error::ReadlineError, Config, EditMode, Editor};
-use scum_lib::Scum;
+use scum::Scum;
 
 fn main() -> Result<(), ReadlineError> {
     let config = Config::builder().edit_mode(EditMode::Vi).build();
