@@ -91,10 +91,10 @@ macro_rules! relation {
             for w in xs.windows(2) {
                 if let [x, y] = w {
                     match (x, y) {
-                        (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => result = a $op b,
-                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => result = a $op b,
-                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => result = a $op b,
-                        (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => result = a $op b,
+                        (Expression::Constant(Atom::Bool(a)), Expression::Constant(Atom::Bool(b))) => result = *a $op *b,
+                        (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => result = *a $op *b,
+                        (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => result = *a $op *b,
+                        (Expression::Constant(Atom::Str(a)), Expression::Constant(Atom::Str(b))) => result = *a $op *b,
                         (Expression::Constant(Atom::Symbol(a)), Expression::Constant(Atom::Symbol(b))) => result = a $op b,
                         (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => result = *a $op (*b as f64),
                         (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Float(b))) => result = (*a as f64) $op *b,
@@ -116,10 +116,10 @@ macro_rules! binary {
                 if let [x, y] = w {
                     match (x, y) {
                         (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Float(b))) => {
-                            result = Expression::Constant(Atom::Float(a $op b));
+                            result = Expression::Constant(Atom::Float(*a $op *b));
                         }
                         (Expression::Constant(Atom::Int(a)), Expression::Constant(Atom::Int(b))) => {
-                            result = Expression::Constant(Atom::Int(a $op b));
+                            result = Expression::Constant(Atom::Int(*a $op *b));
                         }
                         (Expression::Constant(Atom::Float(a)), Expression::Constant(Atom::Int(b))) => {
                             result = Expression::Constant(Atom::Float(*a $op *b as f64));
