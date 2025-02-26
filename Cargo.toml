@@ -12,7 +12,7 @@ thiserror = "2.0.11"
 codegen-units = 1
 lto = true
 panic = "abort"
-strip = "none"
+strip = true
 
 [profile.dev]
 debug = 0
