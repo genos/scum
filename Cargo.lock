@@ -208,7 +208,7 @@ dependencies = [
 
 [[package]]
 name = "scum"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "peg",
  "rustyline",

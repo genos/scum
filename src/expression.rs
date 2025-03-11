@@ -142,6 +142,21 @@ impl Default for Environment {
     fn default() -> Self {
         Self {
             bindings: HashMap::from([
+                (
+                    Identifier("println".into()),
+                    Expression::Function(|xs: Arc<[Expression]>| {
+                        let ys = match xs.len() {
+                            1 => xs.first().cloned().unwrap(),
+                            _ => Expression::List(xs),
+                        };
+                        println!("{ys}");
+                        Ok(ys)
+                    }),
+                ),
+                (
+                    Identifier("list".into()),
+                    Expression::Function(|xs: Arc<[Expression]>| Ok(Expression::List(xs))),
+                ),
                 (Identifier("=".into()), relation!(==)),
                 (Identifier("!=".into()), relation!(!=)),
                 (Identifier(">".into()), relation!(>)),
