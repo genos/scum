@@ -35,7 +35,7 @@ impl Scum {
     /// # Errors
     /// If evaluating the expression in the current environment returns an error, that will be
     /// bubbled up to the top-level.
-    pub fn read_eval_print(&mut self, input: &str) -> Result<String, ScumError> {
+    pub fn read_eval(&mut self, input: &str) -> Result<String, ScumError> {
         read::read(input, &self.env)
             .map_err(ScumError::from)
             .and_then(|x| eval::eval(&x, &mut self.env).map_err(ScumError::from))
