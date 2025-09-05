@@ -146,7 +146,7 @@ impl Default for Environment {
                     Identifier("println".into()),
                     Expression::Function(|xs: Arc<[Expression]>| {
                         let ys = match xs.len() {
-                            1 => xs.first().cloned().unwrap(),
+                            1 => xs.first().cloned().expect("len == 1"),
                             _ => Expression::List(xs),
                         };
                         println!("{ys}");
