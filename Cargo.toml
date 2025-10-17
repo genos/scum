@@ -1,12 +1,12 @@
 [package]
 name = "scum"
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 
 [dependencies]
 peg = "0.8.5"
-rustyline = "17.0.1"
-thiserror = "2.0.16"
+rustyline = "17.0.2"
+thiserror = "2.0.17"
 
 [profile.release]
 codegen-units = 1
